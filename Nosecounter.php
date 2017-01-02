@@ -195,7 +195,7 @@ class Nosecounter {
     private function loadData() {
         foreach (scandir($this->archiveDir) as $file) {
             $filePath = "$this->archiveDir/$file";
-            if (is_file($filePath) && ($fileJson = file_get_contents($filePath)) !== FALSE) {
+            if (is_file($filePath) && $filePath != '.' && $filePath != '..' && ($fileJson = file_get_contents($filePath)) !== FALSE) {
                 $fileData = json_decode($fileJson, true);
                 $this->data[$fileData['Year']] = $fileData;
             } else {
