@@ -190,15 +190,19 @@ class Nosecounter {
                 return FALSE;
             }
 
-            if($outputFile != null && (!file_exists($outputFile) || is_writable($outputFile))) {
-                $fh = fopen($outputFile, 'w');
-                $isWriteSuccessful  = fwrite($fh, $output);
-                fclose($fh);
-                if(!$isWriteSuccessful) {
-                    error_log('Failed to write output to file!');
-                    return FALSE;
+            if($outputFile != null) {
+                if (!file_exists($outputFile) || is_writable($outputFile)) {
+                    $fh = fopen($outputFile, 'w');
+                    $isWriteSuccessful  = fwrite($fh, $output);
+                    fclose($fh);
+                    if(!$isWriteSuccessful) {
+                        error_log('Failed to write output to file!');
+                        return FALSE;
+                    } else {
+                        return $outputFile;
+                    }
                 } else {
-                    return $outputFile;
+                    error_log("No write permissions for $outputFile!");
                 }
             } else {
                 return $output;
@@ -506,7 +510,7 @@ class Nosecounter {
      */
     private function writeSvg($fileName, $svg) {
         $filePath = "{$this->svgDir}{$fileName}.svg";
-        if(is_writable($filePath)) {
+        if(is_writable($this->svgDir) && (!file_exists($filePath) || is_writable($filePath))) {
             $file = fopen($filePath, 'w');
             if(!fwrite($file, $svg)) {
                 error_log("Failed to write SVG to $filePath!");
@@ -514,7 +518,7 @@ class Nosecounter {
             fclose($file);
             return "{$filePath}?t={$this->now->getTimestamp()}";
         } else {
-            error_log("No write permission for $filePath!");
+            error_log("No write permissions for $filePath!");
         }
 
         return false;

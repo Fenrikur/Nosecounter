@@ -14,4 +14,4 @@ echo $nosecounter->setApiUrl('%insert_your_api_endpoint_url_here%')
     ->setYear(2017)
     ->setRegistrationsStart(new DateTime('2016-12-26 00:00:00', new DateTimeZone('UTC')))
     ->setRegistrationsEnd(new DateTime('2017-08-31 00:00:00', new DateTimeZone('UTC')))
-    ->generate('./view.php', './view.html');
+    ->generate('.' . DIRECTORY_SEPARATOR . 'view.php', '.' . DIRECTORY_SEPARATOR . 'view.html');
