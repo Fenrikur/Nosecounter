@@ -2,6 +2,8 @@
 /**
  * Compiles registration statistics retrieved via a JSON API and generates locally stored SVG files for caching.
  *
+ * Uses SVGGraph by goat1000, which is available under the LGPL at https://github.com/goat1000/SVGGraph
+ *
  * (c) 2016 by Dominik "Fenrikur" Schöner <nosecounter@fenrikur.de>
  */
 
@@ -126,7 +128,7 @@ class Nosecounter {
         $this->shirtSizeLabel = \Closure::bind($this->labelClosure, (object) ['fieldName' => 'ShirtSize', 'fieldList' => $this->shirtSizeList, 'data' => &$this->data]);
     }
 
-    public function generate() {
+    public function generate($templateFile = null, $outputFile = null) {
         $startTime = microtime(TRUE);
         $nosecounterData = array();
         if(!is_dir('./svg')) {
@@ -150,8 +152,31 @@ class Nosecounter {
         $nosecounterData['status'] = $this->generateStatus();
         $nosecounterData['statusbar'] = $this->generateStatusBar();
         $nosecounterData['generated'] = '<p>Generated in ' . round((microtime(true) - $startTime) * 1000, 4) . ' ms.</p>';
+        $nosecounterData = (object) $nosecounterData;
 
-        return (object) $nosecounterData;
+        if($templateFile == null || (!is_readable($templateFile) || !is_file($templateFile))) {
+            return $nosecounterData;
+        } else {
+            $output = null;
+            if(!(include $templateFile) || empty($output)) {
+                error_log('Template file not found or invalid!');
+                return FALSE;
+            }
+
+            if($outputFile != null && (!file_exists($outputFile) || is_writable($outputFile))) {
+                $fh = fopen($outputFile, 'w');
+                $isWriteSuccessful  = fwrite($fh, $output);
+                fclose($fh);
+                if(!$isWriteSuccessful) {
+                    error_log('Failed to write output to file!');
+                    return FALSE;
+                } else {
+                    return $outputFile;
+                }
+            } else {
+                return $output;
+            }
+        }
     }
 
     private function loadData() {
@@ -160,12 +185,16 @@ class Nosecounter {
             if (is_file($filePath) && ($fileJson = file_get_contents($filePath)) !== FALSE) {
                 $fileData = json_decode($fileJson, true);
                 $this->data[$fileData['Year']] = $fileData;
+            } else {
+                error_log("Failed to read json archive file at $filePath!");
             }
         }
 
         $this->doRegistrations = ($this->now >= $this->registrationsStart && $this->now <= $this->registrationsEnd) || !file_exists('./svg/registrations.svg');
         if (($apiJson = file_get_contents("$this->apiUrl?token=$this->apiToken&year=$this->year".(($this->doRegistrations)?'&show-created=1':''))) !== FALSE) {
             $this->data[$this->year] = json_decode($apiJson, true);
+        } else {
+            error_log('Failed to read data from API!');
         }
 
         ksort($this->data);
@@ -242,7 +271,7 @@ class Nosecounter {
 
     private function generateRegistrations() {
         if(!$this->doRegistrations) {
-            return;
+            return false;
         }
         $settings = array_merge($this->svgGraphDefaultSettings,
             array('fill_under' => TRUE, 'datetime_keys' => TRUE,
@@ -252,6 +281,8 @@ class Nosecounter {
         $aggregateInterval = new \DateInterval("PT{$this->registrationsInterval}S");
         $aggregatedCount = 0;
         $lastDate = null;
+        /** @var \DateTimeImmutable $lastInterval */
+        $lastInterval = null;
 
         $values_raw = $this->data[$this->year]['Created'];
 
@@ -363,6 +394,7 @@ class Nosecounter {
     private function generateGroupedComparison($fieldName, $settings, $fileName, $legendEntries) {
         $settings = array_merge($this->svgGraphDefaultSettings, $settings);
         $settings['legend_entries'] = $legendEntries;
+        $values = array();
 
         foreach ($this->data as $year => $yearData) {
             foreach ($legendEntries as $entry) {
@@ -433,10 +465,18 @@ class Nosecounter {
 
     private function writeSvg($fileName, $svg) {
         $filePath = "{$this->svgDir}{$fileName}.svg";
-        $file = fopen($filePath, 'w');
-        fwrite($file, $svg);
-        fclose($file);
-        return "{$filePath}?t={$this->now->getTimestamp()}";
+        if(is_writable($filePath)) {
+            $file = fopen($filePath, 'w');
+            if(!fwrite($file, $svg)) {
+                error_log("Failed to write SVG to $filePath!");
+            }
+            fclose($file);
+            return "{$filePath}?t={$this->now->getTimestamp()}";
+        } else {
+            error_log("No write permission for $filePath!");
+        }
+
+        return false;
     }
 
     /**

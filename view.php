@@ -1,22 +1,11 @@
 <?php
 /**
- * Simple HTML boilerplate for displaying the generated SVG.
+ * Simple HTML template for displaying the generated SVG.
  *
  * Copyright 2016 by Dominik "Fenrikur" Schöner <nosecounter@fenrikur.de>
  */
 
-require_once 'Nosecounter.php';
-
-$nosecounter = new \nosecounter\Nosecounter();
-
-$nosecounterData = $nosecounter->setApiUrl('%your_API_URL_here%')
-    ->setApiToken('%your_API_token_here%')
-    ->setYear(2017)
-    ->setRegistrationsStart(new DateTime('1970-01-01 00:00:00', new DateTimeZone('UTC')))
-    ->setRegistrationsEnd(new DateTime('2970-12-31 00:00:00', new DateTimeZone('UTC')))
-    ->generate();
-
-echo <<< EOF
+$output = <<< EOF
 <!DOCTYPE html>
 <html lang="en">
 <head>
