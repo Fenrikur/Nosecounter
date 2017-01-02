@@ -164,7 +164,8 @@ class Nosecounter {
         $nosecounterData['sponsorsComparison'] = $this->generateSponsorsComparison();
         $nosecounterData['status'] = $this->generateStatus();
         $nosecounterData['statusbar'] = $this->generateStatusBar();
-        $nosecounterData['generated'] = '<p>Generated in ' . round((microtime(true) - $startTime) * 1000, 4) . ' ms.</p>';
+        $nosecounterData['generatedIn'] = round((microtime(true) - $startTime)*1000, 4);
+        $nosecounterData['generatedAt'] = $this->now;
         $nosecounterData = (object) $nosecounterData;
 
         if($templateFile == null || (!is_readable($templateFile) || !is_file($templateFile))) {
