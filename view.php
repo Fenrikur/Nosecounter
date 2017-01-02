@@ -131,7 +131,7 @@ $output = <<< EOF
 <div><embed src="{$nosecounterData->shirts}" type="image/svg+xml" style="width: 100%" /></div>
 </div>
 
-<pre><p>Generated in {$nosecounterData->generatedIn} at {$nosecounterData->generatedAt->format('Y-m-d H:i:s P')}.</p></pre>
+<pre><p>Generated in {$nosecounterData->generatedIn} ms at {$nosecounterData->generatedAt->format('Y-m-d H:i:s P')}.</p></pre>
 
 </body>
 </html>
