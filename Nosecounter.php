@@ -106,7 +106,7 @@ class Nosecounter {
     private $shirtSizeLabel;
 
     function __construct() {
-
+        date_default_timezone_set('UTC');
         $this->axisPercentage = function($value, $precision = 0) {
             return round($value * 100, $precision) . "%";
         };
@@ -143,30 +143,43 @@ class Nosecounter {
      */
     public function generate($templateFile = null, $outputFile = null) {
         $startTime = microtime(TRUE);
-        $nosecounterData = array();
+
+        if(empty($this->registrationsStart) || empty($this->registrationsEnd) ||
+                empty($this->apiUrl) || empty($this->apiToken) || empty($this->year)) {
+            error_log('Not all obligatory parameters (apiUrl, apiToken, year, registrationsStart and registrationsEnd) have been set!');
+            return FALSE;
+        }
+
+        $this->now = new \DateTimeImmutable("now", new \DateTimeZone('UTC'));
+        $this->loadData();
+
+        if(empty($this->data) || empty($this->data[$this->year])) {
+            error_log('No data available!');
+            return FALSE;
+        }
+
         if(!is_dir('./svg')) {
             mkdir('./svg');
         }
-        $this->now = new \DateTimeImmutable("now", new \DateTimeZone('UTC'));
-        $this->loadData();
-        $nosecounterData['year'] = $this->year;
-        $nosecounterData['registrationsInterval'] = round($this->registrationsInterval / 60) . ' Minutes';
-        $nosecounterData['age'] = $this->generateAge();
-        $nosecounterData['ageComparison'] = $this->generateAgeComparison();
-        $nosecounterData['country'] = $this->generateCountry();
-        $nosecounterData['countryComparison'] = $this->generateCountryComparison();
-        $nosecounterData['demographics'] = $this->generateDemographics();
-        $nosecounterData['gender'] = $this->generateGender();
-        $nosecounterData['genderComparison'] = $this->generateGenderComparison();
-        $nosecounterData['registrations'] = $this->generateRegistrations();
-        $nosecounterData['shirts'] = $this->generateShirts();
-        $nosecounterData['sponsors'] = $this->generateSponsors();
-        $nosecounterData['sponsorsComparison'] = $this->generateSponsorsComparison();
-        $nosecounterData['status'] = $this->generateStatus();
-        $nosecounterData['statusbar'] = $this->generateStatusBar();
-        $nosecounterData['generatedIn'] = round((microtime(true) - $startTime)*1000, 4);
-        $nosecounterData['generatedAt'] = $this->now;
-        $nosecounterData = (object) $nosecounterData;
+        $nosecounterData = new \stdClass();
+
+        $nosecounterData->year = $this->year;
+        $nosecounterData->registrationsInterval = round($this->registrationsInterval / 60) . ' Minutes';
+        $nosecounterData->age = $this->generateAge();
+        $nosecounterData->ageComparison = $this->generateAgeComparison();
+        $nosecounterData->country = $this->generateCountry();
+        $nosecounterData->countryComparison = $this->generateCountryComparison();
+        $nosecounterData->demographics = $this->generateDemographics();
+        $nosecounterData->gender = $this->generateGender();
+        $nosecounterData->genderComparison = $this->generateGenderComparison();
+        $nosecounterData->registrations = $this->generateRegistrations();
+        $nosecounterData->shirts = $this->generateShirts();
+        $nosecounterData->sponsors = $this->generateSponsors();
+        $nosecounterData->sponsorsComparison = $this->generateSponsorsComparison();
+        $nosecounterData->status = $this->generateStatus();
+        $nosecounterData->statusbar = $this->generateStatusBar();
+        $nosecounterData->generatedIn = round((microtime(true) - $startTime)*1000, 4);
+        $nosecounterData->generatedAt = $this->now;
 
         if($templateFile == null || (!is_readable($templateFile) || !is_file($templateFile))) {
             return $nosecounterData;
@@ -517,6 +530,10 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setApiUrl($apiUrl) {
+        if(empty($apiUrl)) {
+            throw new \InvalidArgumentException('API URL may not be empty!');
+        }
+
         $this->apiUrl = $apiUrl;
         return $this;
     }
@@ -549,6 +566,10 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setYear($year) {
+        if($year <= 0) {
+            throw new \InvalidArgumentException('Year must be > 0!');
+        }
+
         $this->year = $year;
         return $this;
     }
@@ -565,6 +586,9 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setArchiveDir($archiveDir) {
+        if(!is_dir($archiveDir) || !is_readable($archiveDir)) {
+            error_log("The archive directory at $archiveDir does not exist or isn't readable!");
+        }
         $this->archiveDir = $archiveDir;
         return $this;
     }
@@ -581,7 +605,12 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setMaxYearCount($maxYearCount) {
-        $this->maxYearCount = $maxYearCount;
+        if($maxYearCount <= 0) {
+            throw new \InvalidArgumentException('maxYearCount must be > 0!');
+        } else {
+            $this->maxYearCount = $maxYearCount;
+        }
+
         return $this;
     }
 
@@ -597,7 +626,12 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setRegistrationsTimestampFormat($registrationsTimestampFormat) {
-        $this->registrationsTimestampFormat = $registrationsTimestampFormat;
+        if(empty($registrationsTimestampFormat)) {
+            //TODO: Validate timestamp format?
+            throw new \InvalidArgumentException('registrationsTimestampFormat format may not be empty!');
+        } else {
+            $this->registrationsTimestampFormat = $registrationsTimestampFormat;
+        }
         return $this;
     }
 
@@ -613,6 +647,12 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setRegistrationsStart($registrationsStart) {
+        if(empty($registrationsStart)) {
+            throw new \InvalidArgumentException('registrationsStart may not be empty!');
+        } elseif(!empty($this->registrationsStart) && $registrationsStart > $this->registrationsEnd) {
+            throw new \InvalidArgumentException('registrationsStart may not be set to a value before registrationsEnd!');
+        }
+
         $this->registrationsStart = $registrationsStart;
         return $this;
     }
@@ -629,6 +669,12 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setRegistrationsEnd($registrationsEnd) {
+        if(empty($registrationsEnd)) {
+            throw new \InvalidArgumentException('registrationsEnd may not be empty!');
+        } elseif(!empty($this->registrationsEnd) && $registrationsEnd < $this->registrationsStart) {
+            throw new \InvalidArgumentException('registrationsEnd may not be set to a value before registrationsStart!');
+        }
+
         $this->registrationsEnd = $registrationsEnd;
         return $this;
     }
@@ -645,6 +691,10 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setRegistrationsInterval($registrationsInterval) {
+        if($registrationsInterval <= 0) {
+            throw new \InvalidArgumentException('registrationsInterval must be > 0!');
+        }
+
         $this->registrationsInterval = $registrationsInterval;
         return $this;
     }
@@ -661,6 +711,10 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setTopCountryCount($topCountryCount) {
+        if($topCountryCount <= 0) {
+            throw new \InvalidArgumentException('topCountryCount must be > 0!');
+        }
+
         $this->topCountryCount = $topCountryCount;
         return $this;
     }
@@ -677,6 +731,10 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setMinAge($minAge) {
+        if($minAge <= 0) {
+            throw new \InvalidArgumentException('minAge must be > 0!');
+        }
+
         $this->minAge = $minAge;
         return $this;
     }
@@ -693,6 +751,10 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setGenderList($genderList) {
+        if(empty($genderList)) {
+            throw new \InvalidArgumentException('genderList may not be empty!');
+        }
+
         $this->genderList = $genderList;
         return $this;
     }
@@ -709,6 +771,10 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setSponsorList($sponsorList) {
+        if(empty($sponsorList)) {
+            throw new \InvalidArgumentException('sponsorList may not be empty!');
+        }
+
         $this->sponsorList = $sponsorList;
         return $this;
     }
@@ -725,6 +791,10 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setSpecialInterestList($specialInterestList) {
+        if(empty($specialInterestList)) {
+            throw new \InvalidArgumentException('specialInterestList may not be empty!');
+        }
+
         $this->specialInterestList = $specialInterestList;
         return $this;
     }
@@ -741,6 +811,10 @@ class Nosecounter {
      * @return Nosecounter
      */
     public function setShirtSizeList($shirtSizeList) {
+        if(empty($shirtSizeList)) {
+            throw new \InvalidArgumentException('shirtSizeList may not be empty!');
+        }
+
         $this->shirtSizeList = $shirtSizeList;
         return $this;
     }
