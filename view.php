@@ -53,7 +53,7 @@ $output = <<< EOF
             animation-duration: 2s;
         }
 
-        #nosecounter-statusbar {
+        .nosecounter-box {
             font-weight: bold;
             border: 1px solid #222;
             background-color: #eee;
@@ -66,7 +66,7 @@ $output = <<< EOF
 <body>
 <h1>Nosecounter {$nosecounterData->year}</h1>
 
-<div id="nosecounter-statusbar" style="">
+<div id="nosecounter-statusbar" class="nosecounter-box">
     {$nosecounterData->statusbar}
 </div>
 
@@ -132,6 +132,9 @@ $output = <<< EOF
 </div>
 
 <pre><p>Generated in {$nosecounterData->generatedIn} ms at {$nosecounterData->generatedAt->format('Y-m-d H:i:s P')}.</p></pre>
+<div class="nosecounter-box">
+    Source code can be found at <a href="https://github.com/Fenrikur/Nosecounter" title="Fenrikur/Nosecounter @ GitHub">GitHub (Fenrikur/Nosecounter)</a>!
+</div>
 
 </body>
 </html>
