@@ -44,7 +44,7 @@ class Nosecounter {
     /** @var \DateTime $regsPerMinuteStart Until which point in time should the Registrations graph be generated? */
     private $registrationsEnd;
 
-    /** @var int $regsPerMinuteAggregate Interval in seconds over which registrations should be aggregated */
+    /** @var int $registrationsInterval Interval in seconds over which registrations should be aggregated */
     private $registrationsInterval = 60 * 60;
 
     /** @var int $topCountryCount Number of top countries displayed in comparison view */
@@ -195,6 +195,9 @@ class Nosecounter {
     private function loadData() {
         foreach (scandir($this->archiveDir) as $file) {
             $filePath = "$this->archiveDir/$file";
+            if($file == '.' || $file == '..') {
+                continue;
+            }
             if (is_file($filePath) && ($fileJson = file_get_contents($filePath)) !== FALSE) {
                 $fileData = json_decode($fileJson, true);
                 $this->data[$fileData['Year']] = $fileData;
