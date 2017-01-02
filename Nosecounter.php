@@ -28,9 +28,9 @@ class Nosecounter {
     private $year;
 
     /** @var string $archive Path to the folder containing historic data from previous years */
-    private $archiveDir = './archive/';
+    private $archiveDir = '.' . DIRECTORY_SEPARATOR . 'archive' . DIRECTORY_SEPARATOR;
 
-    private $svgDir = './svg/';
+    private $svgDir = '.' . DIRECTORY_SEPARATOR . 'svg' . DIRECTORY_SEPARATOR;
 
     /** @var int $maxYearCount Maximum number of years (subject to availability) to be shown in comparison views */
     private $maxYearCount = 5;
@@ -208,7 +208,7 @@ class Nosecounter {
 
     private function loadData() {
         foreach (scandir($this->archiveDir) as $file) {
-            $filePath = "$this->archiveDir/$file";
+            $filePath = $this->archiveDir . DIRECTORY_SEPARATOR . $file;
             if($file == '.' || $file == '..') {
                 continue;
             }
@@ -220,7 +220,7 @@ class Nosecounter {
             }
         }
 
-        $this->doRegistrations = ($this->now >= $this->registrationsStart && $this->now <= $this->registrationsEnd) || !file_exists('./svg/registrations.svg');
+        $this->doRegistrations = ($this->now >= $this->registrationsStart && $this->now <= $this->registrationsEnd) || !file_exists($this->svgDir . 'registrations.svg');
         if (($apiJson = file_get_contents("$this->apiUrl?token=$this->apiToken&year=$this->year".(($this->doRegistrations)?'&show-created=1':''))) !== FALSE) {
             $this->data[$this->year] = json_decode($apiJson, true);
         } else {
@@ -610,7 +610,9 @@ class Nosecounter {
         if(!is_dir($archiveDir) || !is_readable($archiveDir)) {
             error_log("The archive directory at $archiveDir does not exist or isn't readable!");
         }
-        $this->archiveDir = $archiveDir;
+
+        // Force $archiveDir to terminate with a DIRECTORY_SEPARATOR
+        $this->archiveDir = $archiveDir . (substr_compare($archiveDir, DIRECTORY_SEPARATOR, -1, 1) ? '' : DIRECTORY_SEPARATOR);
         return $this;
     }
 
@@ -896,7 +898,8 @@ class Nosecounter {
             throw new \InvalidArgumentException('svgDir may not be empty!');
         }
 
-        $this->svgDir = $svgDir;
+        // Force $svgDir to terminate with a DIRECTORY_SEPARATOR
+        $this->svgDir = $svgDir . (substr_compare($svgDir, DIRECTORY_SEPARATOR, -1, 1) ? '' : DIRECTORY_SEPARATOR);
         return $this;
     }
 
