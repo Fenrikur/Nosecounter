@@ -128,6 +128,19 @@ class Nosecounter {
         $this->shirtSizeLabel = \Closure::bind($this->labelClosure, (object) ['fieldName' => 'ShirtSize', 'fieldList' => $this->shirtSizeList, 'data' => &$this->data]);
     }
 
+    /**
+     * Generates visualisation output from the data supplied in archive files and the API with an option of integrating
+     * it into a boilerplate template and writing the output to disk.
+     *
+     * @param string $templateFile Path to a template file. Data accessible in the template is provided in
+     *                              $nosecounterData, output is expected to be found in $output.
+     * @param string $outputFile Path to which generated output from the template file should be written.
+     * @return array|bool|null Returns path to output file if both $templateFile and $outputFile are specified.
+     * If only $templateFile is specified, the generated output will be returned.
+     * If neither $templateFile nor $outputFile are given, an array containing the individual SVG strings etc. is
+     * returned, identical to the one supplied for any given $templateFile.
+     * Returns FALSE if an error occurred during generation.
+     */
     public function generate($templateFile = null, $outputFile = null) {
         $startTime = microtime(TRUE);
         $nosecounterData = array();
@@ -726,5 +739,21 @@ class Nosecounter {
     public function setShirtSizeList($shirtSizeList) {
         $this->shirtSizeList = $shirtSizeList;
         return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getSvgGraphDefaultSettings() {
+        return $this->svgGraphDefaultSettings;
+    }
+
+    /**
+     * Merges the given settings array with the pre-existing default settings for SVGGraph.
+     *
+     * @param array $svgGraphDefaultSettings
+     */
+    public function setSvgGraphDefaultSettings($svgGraphDefaultSettings) {
+        $this->svgGraphDefaultSettings = array_merge($this->svgGraphDefaultSettings, $svgGraphDefaultSettings);
     }
 }
