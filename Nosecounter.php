@@ -181,7 +181,7 @@ class Nosecounter {
         $nosecounterData->generatedIn = round((microtime(true) - $startTime)*1000, 4);
         $nosecounterData->generatedAt = $this->now;
 
-        if($templateFile == null || (!is_readable($templateFile) || !is_file($templateFile))) {
+        if($templateFile == null) {
             return $nosecounterData;
         } else {
             $output = null;
@@ -226,6 +226,7 @@ class Nosecounter {
         } else {
             error_log('Failed to read data from API!');
         }
+        $this->doRegistrations = isset($this->data['Created']);
 
         ksort($this->data);
         $this->data = array_slice($this->data, max(0, count($this->data) - $this->maxYearCount), $this->maxYearCount, TRUE);
@@ -301,6 +302,10 @@ class Nosecounter {
 
     private function generateRegistrations() {
         if(!$this->doRegistrations) {
+            $filePath = "{$this->svgDir}registrations.svg";
+            if(file_exists($filePath)) {
+                return $filePath;
+            }
             return false;
         }
         $settings = array_merge($this->svgGraphDefaultSettings,
@@ -871,5 +876,59 @@ class Nosecounter {
      */
     public function setSvgGraphDefaultSettings($svgGraphDefaultSettings) {
         $this->svgGraphDefaultSettings = array_merge($this->svgGraphDefaultSettings, $svgGraphDefaultSettings);
+    }
+
+    /**
+     * @return string
+     */
+    public function getSvgDir() {
+        return $this->svgDir;
+    }
+
+    /**
+     * @param string $svgDir
+     */
+    public function setSvgDir($svgDir) {
+        if(empty($svgDir)) {
+            throw new \InvalidArgumentException('svgDir may not be empty!');
+        }
+
+        $this->svgDir = $svgDir;
+    }
+
+    /**
+     * @return int
+     */
+    public function getGraphWidth() {
+        return $this->graphWidth;
+    }
+
+    /**
+     * @param int $graphWidth
+     */
+    public function setGraphWidth($graphWidth) {
+        if($graphWidth <= 0) {
+            throw new \InvalidArgumentException('graphWidth must be > 0!');
+        }
+
+        $this->graphWidth = $graphWidth;
+    }
+
+    /**
+     * @return int
+     */
+    public function getGraphHeight() {
+        return $this->graphHeight;
+    }
+
+    /**
+     * @param int $graphHeight
+     */
+    public function setGraphHeight($graphHeight) {
+        if($graphHeight <= 0) {
+            throw new \InvalidArgumentException('graphHeight must be > 0!');
+        }
+
+        $this->graphHeight = $graphHeight;
     }
 }
