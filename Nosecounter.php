@@ -135,7 +135,7 @@ class Nosecounter {
      * @param string $templateFile Path to a template file. Data accessible in the template is provided in
      *                              $nosecounterData, output is expected to be found in $output.
      * @param string $outputFile Path to which generated output from the template file should be written.
-     * @return array|bool|null Returns path to output file if both $templateFile and $outputFile are specified.
+     * @return object|bool|null Returns path to output file if both $templateFile and $outputFile are specified.
      * If only $templateFile is specified, the generated output will be returned.
      * If neither $templateFile nor $outputFile are given, an array containing the individual SVG strings etc. is
      * returned, identical to the one supplied for any given $templateFile.
@@ -493,6 +493,12 @@ class Nosecounter {
         return $this->writeSvg($fileName, $graph->Fetch('StackedBarGraph'));
     }
 
+    /**
+     * Writes the SVG code in $svg to $fileName.
+     * @param string $fileName Target file to which SVG code should be written.
+     * @param string $svg SVG code to be written to file.
+     * @return bool|string
+     */
     private function writeSvg($fileName, $svg) {
         $filePath = "{$this->svgDir}{$fileName}.svg";
         if(is_writable($filePath)) {
@@ -510,15 +516,18 @@ class Nosecounter {
     }
 
     /**
-     * @param \DateTimeImmutable $dateTime
-     * @param $interval
-     * @return mixed
+     * Creates a new DateTimeImmutable aligned to the given interval (e.g. 10:03:00 aligned to an interval of
+     * 5 minutes would result in 10:00:00, whereas 10:05:00 would remain unmodified).
+     * @param \DateTimeImmutable $dateTime Date time object to be aligned
+     * @param int $interval Interval in seconds to which $dateTime should be aligned to
+     * @return \DateTimeImmutable|bool Newly created DateTimeImmutable aligned to given $interval or FALSE on failure.
      */
     private function alignToInterval(\DateTimeImmutable $dateTime, $interval) {
         return $dateTime->sub(new \DateInterval('PT' . $dateTime->getTimestamp() % $interval . 'S'));
     }
 
     /**
+     * @see Nosecounter::$apiUrl
      * @return string
      */
     public function getApiUrl() {
@@ -526,6 +535,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$apiUrl
      * @param string $apiUrl
      * @return Nosecounter
      */
@@ -539,6 +549,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$apiToken
      * @return string
      */
     public function getApiToken() {
@@ -546,6 +557,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$apiToken
      * @param string $apiToken
      * @return Nosecounter
      */
@@ -555,6 +567,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$year
      * @return int
      */
     public function getYear() {
@@ -562,6 +575,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$year
      * @param int $year
      * @return Nosecounter
      */
@@ -575,6 +589,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$archiveDir
      * @return string
      */
     public function getArchiveDir() {
@@ -582,6 +597,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$archiveDir
      * @param string $archiveDir
      * @return Nosecounter
      */
@@ -594,6 +610,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$maxYearCount
      * @return int
      */
     public function getMaxYearCount() {
@@ -601,6 +618,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$maxYearCount
      * @param int $maxYearCount
      * @return Nosecounter
      */
@@ -615,6 +633,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$registrationsTimestampFormat
      * @return string
      */
     public function getRegistrationsTimestampFormat() {
@@ -622,6 +641,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$registrationsTimestampFormat
      * @param string $registrationsTimestampFormat
      * @return Nosecounter
      */
@@ -636,6 +656,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$registrationsStart
      * @return \DateTime
      */
     public function getRegistrationsStart() {
@@ -643,6 +664,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$registrationsStart
      * @param \DateTime $registrationsStart
      * @return Nosecounter
      */
@@ -658,6 +680,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$registrationsStart
      * @return \DateTime
      */
     public function getRegistrationsEnd() {
@@ -665,6 +688,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$registrationsEnd
      * @param \DateTime $registrationsEnd
      * @return Nosecounter
      */
@@ -680,6 +704,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$registrationsInterval
      * @return int
      */
     public function getRegistrationsInterval() {
@@ -687,6 +712,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$registrationsInterval
      * @param int $registrationsInterval
      * @return Nosecounter
      */
@@ -700,6 +726,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$topCountryCount
      * @return int
      */
     public function getTopCountryCount() {
@@ -707,6 +734,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$topCountryCount
      * @param int $topCountryCount
      * @return Nosecounter
      */
@@ -720,6 +748,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$minAge
      * @return int
      */
     public function getMinAge() {
@@ -727,6 +756,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$minAge
      * @param int $minAge
      * @return Nosecounter
      */
@@ -740,6 +770,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$genderList
      * @return array
      */
     public function getGenderList() {
@@ -747,6 +778,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$genderList
      * @param array $genderList
      * @return Nosecounter
      */
@@ -760,6 +792,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$sponsorList
      * @return array
      */
     public function getSponsorList() {
@@ -767,6 +800,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$sponsorList
      * @param array $sponsorList
      * @return Nosecounter
      */
@@ -780,6 +814,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$specialInterestList
      * @return array
      */
     public function getSpecialInterestList() {
@@ -787,6 +822,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$specialInterestList
      * @param array $specialInterestList
      * @return Nosecounter
      */
@@ -800,6 +836,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$shirtSizeList
      * @return array
      */
     public function getShirtSizeList() {
@@ -807,6 +844,7 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$shirtSizeList
      * @param array $shirtSizeList
      * @return Nosecounter
      */
