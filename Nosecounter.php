@@ -873,9 +873,11 @@ class Nosecounter {
      * Merges the given settings array with the pre-existing default settings for SVGGraph.
      *
      * @param array $svgGraphDefaultSettings
+     * @return Nosecounter
      */
     public function setSvgGraphDefaultSettings($svgGraphDefaultSettings) {
         $this->svgGraphDefaultSettings = array_merge($this->svgGraphDefaultSettings, $svgGraphDefaultSettings);
+        return $this;
     }
 
     /**
@@ -887,6 +889,7 @@ class Nosecounter {
 
     /**
      * @param string $svgDir
+     * @return Nosecounter
      */
     public function setSvgDir($svgDir) {
         if(empty($svgDir)) {
@@ -894,6 +897,7 @@ class Nosecounter {
         }
 
         $this->svgDir = $svgDir;
+        return $this;
     }
 
     /**
@@ -905,6 +909,7 @@ class Nosecounter {
 
     /**
      * @param int $graphWidth
+     * @return Nosecounter
      */
     public function setGraphWidth($graphWidth) {
         if($graphWidth <= 0) {
@@ -912,6 +917,7 @@ class Nosecounter {
         }
 
         $this->graphWidth = $graphWidth;
+        return $this;
     }
 
     /**
@@ -923,6 +929,7 @@ class Nosecounter {
 
     /**
      * @param int $graphHeight
+     * @return Nosecounter
      */
     public function setGraphHeight($graphHeight) {
         if($graphHeight <= 0) {
@@ -930,5 +937,6 @@ class Nosecounter {
         }
 
         $this->graphHeight = $graphHeight;
+        return $this;
     }
 }
