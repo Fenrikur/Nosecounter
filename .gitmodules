@@ -1,0 +1,3 @@
+[submodule "SVGGraph"]
+    path = SVGGraph
+    url = git://github.com/Fenrikur/SVGGraph.git
