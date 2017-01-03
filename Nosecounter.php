@@ -230,7 +230,7 @@ class Nosecounter {
         } else {
             error_log('Failed to read data from API!');
         }
-        $this->doRegistrations = isset($this->data['Created']);
+        $this->doRegistrations = isset($this->data[$this->year]['Created']);
 
         ksort($this->data);
         $this->data = array_slice($this->data, max(0, count($this->data) - $this->maxYearCount), $this->maxYearCount, TRUE);
