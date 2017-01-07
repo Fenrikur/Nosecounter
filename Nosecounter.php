@@ -778,9 +778,35 @@ class Nosecounter {
     public function setMinAge($minAge) {
         if($minAge <= 0) {
             throw new \InvalidArgumentException('minAge must be > 0!');
+        } elseif($minAge > $this->maxAge) {
+            throw new \InvalidArgumentException('minAge must be less than maxAge!');
         }
 
         $this->minAge = $minAge;
+        return $this;
+    }
+
+    /**
+     * @see Nosecounter::$maxAge
+     * @return int
+     */
+    public function getMaxAge() {
+        return $this->maxAge;
+    }
+
+    /**
+     * @see Nosecounter::$maxAge
+     * @param int $maxAge
+     * @return Nosecounter
+     */
+    public function setMaxAge($maxAge) {
+        if($maxAge <= 0) {
+            throw new \InvalidArgumentException('maxAge must be > 0!');
+        } elseif($maxAge < $this->minAge) {
+            throw new \InvalidArgumentException('maxAge must be greater than minAge!');
+        }
+
+        $this->maxAge = $maxAge;
         return $this;
     }
 
