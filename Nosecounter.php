@@ -53,6 +53,9 @@ class Nosecounter {
     /** @var int $minAge Minimum age required to attend the convention as full (counting) attendee */
     private $minAge = 18;
 
+    /** @var int $maxAge Maximum age to be displayed in the graphs */
+    private $maxAge = 110;
+
     /** @var array $genderList List of all possible genders to be selected at registration */
     private $genderList = array('male', 'female');
 
@@ -236,6 +239,7 @@ class Nosecounter {
         $this->data = array_slice($this->data, max(0, count($this->data) - $this->maxYearCount), $this->maxYearCount, TRUE);
 
         foreach($this->data as $year => $yearData) {
+            $this->data[$year]['Age'] = array_filter($this->data[$year]['Age'], function($var) { return $var >= $this->minAge && $var <= $this->maxAge; }, ARRAY_FILTER_USE_KEY);
             asort($this->data[$year]['Country']);
             $this->data[$year]['Country'] = array_reverse($this->data[$year]['Country']);
         }
