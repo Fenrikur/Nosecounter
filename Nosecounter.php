@@ -277,7 +277,7 @@ class Nosecounter {
     }
 
     private function generateCountry() {
-        $settings = array();
+        $settings = array('grid_division_h' => 1);
 
         return $this->generateBarGraph('Country', $settings, 'country');
     }
