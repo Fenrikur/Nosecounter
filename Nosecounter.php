@@ -68,6 +68,15 @@ class Nosecounter {
     /** @var array $shirtSizeList List of all possible shirt sizes selectable at registration */
     private $shirtSizeList = array('XS', 'S', 'M', 'L', 'XL', 'XXL');
 
+    /** @var string $statusBarSeparator Separator inserted between the individual parts of the status bar. */
+    private $statusBarSeparator = ' | ';
+
+    /** @var string $statusBarPrefix String that will be prepended to the status bar. */
+    private $statusBarPrefix = '| ';
+
+    /** @var string $statusBarSuffix String that will be appended to the status bar. */
+    private $statusBarSuffix = ' |';
+
     private $topCountryList;
 
     private $svgGraphDefaultSettings = array(
@@ -416,12 +425,12 @@ class Nosecounter {
     }
 
     private function generateStatusBar() {
-        $statusBar = '|';
+        $statusBarItems = array();
         foreach ($this->data[$this->year]['Status'] as $status => $count) {
-            $statusBar .= " $status: $count |";
+            $statusBarItems[] = "$status: $count";
         }
 
-        return $statusBar;
+        return $this->statusBarPrefix . implode($this->statusBarSeparator, $statusBarItems) . $this->statusBarSuffix;
     }
 
     private function generateBarGraph($fieldName, $settings, $fileName) {
@@ -974,6 +983,54 @@ class Nosecounter {
         }
 
         $this->graphHeight = $graphHeight;
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getStatusBarSeparator() {
+        return $this->statusBarSeparator;
+    }
+
+    /**
+     * @param int $statusBarSeparator
+     * @return Nosecounter
+     */
+    public function setStatusBarSeparator($statusBarSeparator) {
+        $this->statusBarSeparator = $statusBarSeparator;
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getStatusBarPrefix() {
+        return $this->statusBarPrefix;
+    }
+
+    /**
+     * @param int $statusBarPrefix
+     * @return Nosecounter
+     */
+    public function setStatusBarPrefix($statusBarPrefix) {
+        $this->statusBarPrefix = $statusBarPrefix;
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getStatusBarSuffix() {
+        return $this->statusBarSuffix;
+    }
+
+    /**
+     * @param int $statusBarSuffix
+     * @return Nosecounter
+     */
+    public function setStatusBarSuffix($statusBarSuffix) {
+        $this->statusBarSuffix = $statusBarSuffix;
         return $this;
     }
 }
