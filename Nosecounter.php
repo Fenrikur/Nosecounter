@@ -316,7 +316,7 @@ class Nosecounter {
     }
 
     private function generateGender() {
-        $settings = array();
+        $settings = array('show_label_percent' => TRUE);
 
         return $this->generatePieGraph('Gender', $settings, 'gender');
     }
@@ -417,7 +417,7 @@ class Nosecounter {
     }
 
     private function generateSponsors() {
-        $settings = array();
+        $settings = array('show_label_percent' => TRUE);
 
         return $this->generatePieGraph('Sponsor', $settings, 'sponsors');
     }
