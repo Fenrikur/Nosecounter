@@ -80,15 +80,24 @@ class Nosecounter {
     private $topCountryList;
 
     private $svgGraphDefaultSettings = array(
-        'back_colour' => '#eee', 'stroke_colour' => '#000',
-        'back_stroke_width' => 0, 'back_stroke_colour' => '#eee',
-        'axis_colour' => '#333', 'axis_overlap' => 2,
-        'axis_font' => 'Georgia', 'axis_font_size' => 10,
-        'grid_colour' => '#666', 'label_colour' => '#efefef',
-        'pad_right' => 20, 'pad_left' => 20,
-        'link_base' => '/', 'link_target' => '_top',
-        'minimum_grid_spacing' => 20, 'semantic_classes' => TRUE,
-        'legend_shadow_opacity' => 0, 'legend_position' => 'outside right 5 0',
+        'back_colour' => '#eee',
+        'stroke_colour' => '#000',
+        'back_stroke_width' => 0,
+        'back_stroke_colour' => '#eee',
+        'axis_colour' => '#333',
+        'axis_overlap' => 2,
+        'axis_font' => 'Georgia',
+        'axis_font_size' => 10,
+        'grid_colour' => '#666',
+        'label_colour' => '#efefef',
+        'pad_right' => 20,
+        'pad_left' => 20,
+        'link_base' => '/',
+        'link_target' => '_top',
+        'minimum_grid_spacing' => 20,
+        'semantic_classes' => TRUE,
+        'legend_shadow_opacity' => 0,
+        'legend_position' => 'outside right 5 0',
         'auto_fit' => TRUE
     );
 
@@ -135,9 +144,24 @@ class Nosecounter {
             return round($value * 100, 1) . "% ({$absoluteValue})";
         };
 
-        $this->genderLabel = \Closure::bind($this->labelClosure, (object) ['fieldName' => 'Gender', 'fieldList' => $this->genderList, 'data' => &$this->data]);
-        $this->sponsorLabel = \Closure::bind($this->labelClosure, (object) ['fieldName' => 'Sponsor', 'fieldList' => $this->sponsorList, 'data' => &$this->data]);
-        $this->shirtSizeLabel = \Closure::bind($this->labelClosure, (object) ['fieldName' => 'ShirtSize', 'fieldList' => $this->shirtSizeList, 'data' => &$this->data]);
+        $this->genderLabel = \Closure::bind($this->labelClosure,
+            (object) [
+                'fieldName' => 'Gender',
+                'fieldList' => $this->genderList,
+                'data' => &$this->data
+            ]);
+        $this->sponsorLabel = \Closure::bind($this->labelClosure,
+            (object) [
+                'fieldName' => 'Sponsor',
+                'fieldList' => $this->sponsorList,
+                'data' => &$this->data
+            ]);
+        $this->shirtSizeLabel = \Closure::bind($this->labelClosure,
+            (object) [
+                'fieldName' => 'ShirtSize',
+                'fieldList' => $this->shirtSizeList,
+                'data' => &$this->data
+            ]);
     }
 
     /**
@@ -255,8 +279,14 @@ class Nosecounter {
     }
 
     private function generateAge() {
-        $settings = array('grid_division_h' => 1, 'axis_text_angle_h' => -90, 'axis_min_h' => $this->minAge,
-            'log_axis_y' => TRUE, 'log_axis_y_base' => 2, 'axis_min_v' => 0.9);
+        $settings = array(
+            'grid_division_h' => 1,
+            'axis_text_angle_h' => -90,
+            'axis_min_h' => $this->minAge,
+            'log_axis_y' => TRUE,
+            'log_axis_y_base' => 2,
+            'axis_min_v' => 0.9
+        );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
         $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
 
@@ -265,11 +295,21 @@ class Nosecounter {
 
     private function generateAgeComparison() {
         $settings = array_merge($this->svgGraphDefaultSettings,
-            array('grid_division_h' => 1, 'axis_text_angle_h' => -90,
-                'axis_min_h' => $this->minAge, 'legend_shadow_opacity' => 0,
-                'legend_position' => 'outside right 5 0', 'legend_columns' => 1,
-                'marker_type' => 'fourstar', 'marker_size' => 5, 'pad_right' => 120,
-                'log_axis_y' => TRUE, 'log_axis_y_base' => 2, 'axis_min_v' => 0.9));
+            array(
+                'grid_division_h' => 1,
+                'axis_text_angle_h' => -90,
+                'axis_min_h' => $this->minAge,
+                'legend_shadow_opacity' => 0,
+                'legend_position' => 'outside right 5 0',
+                'legend_columns' => 1,
+                'marker_type' => 'fourstar',
+                'marker_size' => 5,
+                'pad_right' => 120,
+                'log_axis_y' => TRUE,
+                'log_axis_y_base' => 2,
+                'axis_min_v' => 0.9
+            )
+        );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
         $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
 
@@ -291,7 +331,12 @@ class Nosecounter {
     }
 
     private function generateCountry() {
-        $settings = array('grid_division_h' => 1, 'log_axis_y' => TRUE, 'log_axis_y_base' => 2, 'axis_min_v' => 0.9);
+        $settings = array(
+            'grid_division_h' => 1,
+            'log_axis_y' => TRUE,
+            'log_axis_y_base' => 2,
+            'axis_min_v' => 0.9
+        );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
         $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
 
@@ -299,8 +344,13 @@ class Nosecounter {
     }
 
     private function generateCountryComparison() {
-        $settings = array('legend_columns' => 2, 'pad_right' => 120, 'log_axis_y' => TRUE, 'log_axis_y_base' => 2,
-            'axis_min_v' => 0.9);
+        $settings = array(
+            'legend_columns' => 2,
+            'pad_right' => 120,
+            'log_axis_y' => TRUE,
+            'log_axis_y_base' => 2,
+            'axis_min_v' => 0.9
+        );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
         $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
 
@@ -310,7 +360,9 @@ class Nosecounter {
     }
 
     private function generateDemographics() {
-        $settings = array('pad_right' => 120);
+        $settings = array(
+            'pad_right' => 120
+        );
 
         return $this->generateGroupedComparison('SpecialInterest', $settings, 'demographics', $this->specialInterestList);
     }
@@ -336,9 +388,14 @@ class Nosecounter {
             return false;
         }
         $settings = array_merge($this->svgGraphDefaultSettings,
-            array('fill_under' => TRUE, 'datetime_keys' => TRUE,
-            'axis_text_angle_h' => -90, 'marker_size' => 1,
-            'line_stroke_width' => 0.5));
+            array(
+                'fill_under' => TRUE,
+                'datetime_keys' => TRUE,
+                'axis_text_angle_h' => -90,
+                'marker_size' => 1,
+                'line_stroke_width' => 0.5
+            )
+        );
         $values = array();
         $aggregateInterval = new \DateInterval("PT{$this->registrationsInterval}S");
         $aggregatedCount = 0;
@@ -410,26 +467,40 @@ class Nosecounter {
     }
 
     private function generateShirts() {
-        $settings = array('legend_columns' => 2, 'data_label_callback' => $this->shirtSizeLabel,
-            'pad_right' => 130);
+        $settings = array(
+            'legend_columns' => 2,
+            'data_label_callback' => $this->shirtSizeLabel,
+            'pad_right' => 130
+        );
 
         return $this->generateStackedComparison('ShirtSize', $settings, 'shirts', $this->shirtSizeList);
     }
 
     private function generateSponsors() {
-        $settings = array('show_label_percent' => TRUE);
+        $settings = array(
+            'show_label_percent' => TRUE
+        );
 
         return $this->generatePieGraph('Sponsor', $settings, 'sponsors');
     }
 
     private function generateSponsorsComparison() {
-        $settings = array('data_label_callback' => $this->sponsorLabel, 'pad_right' => 140);
+        $settings = array(
+            'data_label_callback' => $this->sponsorLabel,
+            'pad_right' => 140
+        );
 
         return $this->generateStackedComparison('Sponsor', $settings, 'sponsorsComparison', $this->sponsorList);
     }
 
     private function generateStatus() {
-        $settings = array();
+        $settings = array(
+            'log_axis_y' => TRUE,
+            'log_axis_y_base' => 2,
+            'axis_min_v' => 0.9
+        );
+        // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
+        $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
 
         return $this->generateBarGraph('Status', $settings, 'status');
     }
@@ -471,7 +542,13 @@ class Nosecounter {
 
     private function generatePieGraph($fieldName, $settings, $fileName) {
         //TODO: Label callback to show percentage as well as absolute count
-        $settings = array_merge($this->svgGraphDefaultSettings, array('show_label_amount' => TRUE), $settings);
+        $settings = array_merge(
+            $this->svgGraphDefaultSettings,
+            array(
+                'show_label_amount' => TRUE
+            ),
+            $settings
+        );
         $values = $this->data[$this->year][$fieldName];
 
         $totalCount = 0;
@@ -491,8 +568,16 @@ class Nosecounter {
     }
 
     private function generateStackedComparison($fieldName, $settings, $fileName, $legendEntries) {
-        $settings = array_merge($this->svgGraphDefaultSettings, array('show_data_labels' => TRUE, 'data_label_position' => 'top',
-            'data_label_colour' => '#efefef', 'axis_text_callback_y' => $this->axisPercentage), $settings);
+        $settings = array_merge(
+            $this->svgGraphDefaultSettings,
+            array(
+                'show_data_labels' => TRUE,
+                'data_label_position' => 'top',
+                'data_label_colour' => '#efefef',
+                'axis_text_callback_y' => $this->axisPercentage
+            ),
+            $settings
+        );
         $values = array();
         array_pad($values, count($legendEntries), array());
 
