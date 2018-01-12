@@ -255,8 +255,10 @@ class Nosecounter {
     }
 
     private function generateAge() {
-        $settings = array('grid_division_h' => 1, 'axis_text_angle_h' => -90,
-            'axis_min_h' => $this->minAge);
+        $settings = array('grid_division_h' => 1, 'axis_text_angle_h' => -90, 'axis_min_h' => $this->minAge,
+            'log_axis_y' => TRUE, 'log_axis_y_base' => 2, 'axis_min_v' => 0.9);
+        // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
+        $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
 
         return $this->generateBarGraph('Age', $settings, 'age');
     }
@@ -266,8 +268,11 @@ class Nosecounter {
             array('grid_division_h' => 1, 'axis_text_angle_h' => -90,
                 'axis_min_h' => $this->minAge, 'legend_shadow_opacity' => 0,
                 'legend_position' => 'outside right 5 0', 'legend_columns' => 1,
-                'marker_type' => 'fourstar', 'marker_size' => 5,
-                'pad_right' => 120));
+                'marker_type' => 'fourstar', 'marker_size' => 5, 'pad_right' => 120,
+                'log_axis_y' => TRUE, 'log_axis_y_base' => 2, 'axis_min_v' => 0.9));
+        // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
+        $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
+
         $values = array();
 
         $settings['legend_entries'] = array();
@@ -286,13 +291,18 @@ class Nosecounter {
     }
 
     private function generateCountry() {
-        $settings = array('grid_division_h' => 1);
+        $settings = array('grid_division_h' => 1, 'log_axis_y' => TRUE, 'log_axis_y_base' => 2, 'axis_min_v' => 0.9);
+        // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
+        $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
 
         return $this->generateBarGraph('Country', $settings, 'country');
     }
 
     private function generateCountryComparison() {
-        $settings = array('legend_columns' => 2, 'pad_right' => 120);
+        $settings = array('legend_columns' => 2, 'pad_right' => 120, 'log_axis_y' => TRUE, 'log_axis_y_base' => 2,
+            'axis_min_v' => 0.9);
+        // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
+        $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
 
         $this->topCountryList = array_keys(array_slice($this->data[$this->year]['Country'], 0, $this->topCountryCount));
 
