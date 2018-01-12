@@ -190,7 +190,7 @@ class Nosecounter {
         $nosecounterData->sponsorsComparison = $this->generateSponsorsComparison();
         $nosecounterData->status = $this->generateStatus();
         $nosecounterData->statusbar = $this->generateStatusBar();
-        $nosecounterData->generatedIn = round((microtime(true) - $startTime)*1000, 4);
+        $nosecounterData->generatedIn = round((microtime(TRUE) - $startTime)*1000, 4);
         $nosecounterData->generatedAt = $this->now;
 
         if($templateFile == null) {
@@ -229,7 +229,7 @@ class Nosecounter {
                 continue;
             }
             if (is_file($filePath) && ($fileJson = file_get_contents($filePath)) !== FALSE) {
-                $fileData = json_decode($fileJson, true);
+                $fileData = json_decode($fileJson, TRUE);
                 $this->data[$fileData['Year']] = $fileData;
             } else {
                 error_log("Failed to read json archive file at $filePath!");
@@ -238,7 +238,7 @@ class Nosecounter {
 
         $this->doRegistrations = ($this->now >= $this->registrationsStart && $this->now <= $this->registrationsEnd) || !file_exists($this->svgDir . 'registrations.svg');
         if (($apiJson = file_get_contents("$this->apiUrl?token=$this->apiToken&year=$this->year".(($this->doRegistrations)?'&show-created=1':''))) !== FALSE) {
-            $this->data[$this->year] = json_decode($apiJson, true);
+            $this->data[$this->year] = json_decode($apiJson, TRUE);
         } else {
             error_log('Failed to read data from API!');
         }
