@@ -89,7 +89,7 @@ class Nosecounter {
         'axis_font' => 'Georgia',
         'axis_font_size' => 10,
         'grid_colour' => '#666',
-        'label_colour' => '#efefef',
+        'label_colour' => '#222',
         'pad_right' => 20,
         'pad_left' => 20,
         'link_base' => '/',
@@ -98,7 +98,12 @@ class Nosecounter {
         'semantic_classes' => TRUE,
         'legend_shadow_opacity' => 0,
         'legend_position' => 'outside right 5 0',
-        'auto_fit' => TRUE
+        'auto_fit' => TRUE,
+        'data_label_space' => 5,
+        'data_label_colour' => '#222',
+        'data_label_back_colour' => '#fff',
+        'data_label_outline_thickness' => 20,
+        'data_label_position' => 'top',
     );
 
     private $graphWidth = 1000;
@@ -181,7 +186,7 @@ class Nosecounter {
         $startTime = microtime(TRUE);
 
         if(empty($this->registrationsStart) || empty($this->registrationsEnd) ||
-                empty($this->apiUrl) || empty($this->apiToken) || empty($this->year)) {
+            empty($this->apiUrl) || empty($this->apiToken) || empty($this->year)) {
             error_log('Not all obligatory parameters (apiUrl, apiToken, year, registrationsStart and registrationsEnd) have been set!');
             return FALSE;
         }
@@ -285,7 +290,7 @@ class Nosecounter {
             'axis_min_h' => $this->minAge,
             'log_axis_y' => TRUE,
             'log_axis_y_base' => 2,
-            'axis_min_v' => 0.9
+            'axis_min_v' => 0.9,
         );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
         $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
@@ -307,7 +312,7 @@ class Nosecounter {
                 'pad_right' => 120,
                 'log_axis_y' => TRUE,
                 'log_axis_y_base' => 2,
-                'axis_min_v' => 0.9
+                'axis_min_v' => 0.9,
             )
         );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
@@ -335,7 +340,8 @@ class Nosecounter {
             'grid_division_h' => 1,
             'log_axis_y' => TRUE,
             'log_axis_y_base' => 2,
-            'axis_min_v' => 0.9
+            'axis_min_v' => 0.9,
+            'show_data_labels' => TRUE,
         );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
         $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
@@ -349,7 +355,8 @@ class Nosecounter {
             'pad_right' => 120,
             'log_axis_y' => TRUE,
             'log_axis_y_base' => 2,
-            'axis_min_v' => 0.9
+            'axis_min_v' => 0.9,
+            'show_data_labels' => TRUE,
         );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
         $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
@@ -361,20 +368,26 @@ class Nosecounter {
 
     private function generateDemographics() {
         $settings = array(
-            'pad_right' => 120
+            'pad_right' => 120,
+            'show_data_labels' => TRUE,
         );
 
         return $this->generateGroupedComparison('SpecialInterest', $settings, 'demographics', $this->specialInterestList);
     }
 
     private function generateGender() {
-        $settings = array('show_label_percent' => TRUE);
+        $settings = array(
+            'show_label_percent' => TRUE,
+        );
 
         return $this->generatePieGraph('Gender', $settings, 'gender');
     }
 
     private function generateGenderComparison() {
-        $settings = array('data_label_callback' => $this->genderLabel, 'pad_right' => 100);
+        $settings = array(
+            'data_label_callback' => $this->genderLabel,
+            'pad_right' => 100,
+        );
 
         return $this->generateStackedComparison('Gender', $settings, 'genderComparison', $this->genderList);
     }
@@ -393,7 +406,7 @@ class Nosecounter {
                 'datetime_keys' => TRUE,
                 'axis_text_angle_h' => -90,
                 'marker_size' => 1,
-                'line_stroke_width' => 0.5
+                'line_stroke_width' => 0.5,
             )
         );
         $values = array();
@@ -470,7 +483,7 @@ class Nosecounter {
         $settings = array(
             'legend_columns' => 2,
             'data_label_callback' => $this->shirtSizeLabel,
-            'pad_right' => 130
+            'pad_right' => 130,
         );
 
         return $this->generateStackedComparison('ShirtSize', $settings, 'shirts', $this->shirtSizeList);
@@ -478,7 +491,7 @@ class Nosecounter {
 
     private function generateSponsors() {
         $settings = array(
-            'show_label_percent' => TRUE
+            'show_label_percent' => TRUE,
         );
 
         return $this->generatePieGraph('Sponsor', $settings, 'sponsors');
@@ -487,7 +500,7 @@ class Nosecounter {
     private function generateSponsorsComparison() {
         $settings = array(
             'data_label_callback' => $this->sponsorLabel,
-            'pad_right' => 140
+            'pad_right' => 140,
         );
 
         return $this->generateStackedComparison('Sponsor', $settings, 'sponsorsComparison', $this->sponsorList);
@@ -497,7 +510,8 @@ class Nosecounter {
         $settings = array(
             'log_axis_y' => TRUE,
             'log_axis_y_base' => 2,
-            'axis_min_v' => 0.9
+            'axis_min_v' => 0.9,
+            'show_data_labels' => TRUE,
         );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
         $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
@@ -545,7 +559,7 @@ class Nosecounter {
         $settings = array_merge(
             $this->svgGraphDefaultSettings,
             array(
-                'show_label_amount' => TRUE
+                'show_label_amount' => TRUE,
             ),
             $settings
         );
@@ -572,9 +586,7 @@ class Nosecounter {
             $this->svgGraphDefaultSettings,
             array(
                 'show_data_labels' => TRUE,
-                'data_label_position' => 'top',
-                'data_label_colour' => '#efefef',
-                'axis_text_callback_y' => $this->axisPercentage
+                'axis_text_callback_y' => $this->axisPercentage,
             ),
             $settings
         );
