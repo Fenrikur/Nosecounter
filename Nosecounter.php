@@ -222,6 +222,11 @@ class Nosecounter {
         $nosecounterData->generatedIn = round((microtime(TRUE) - $startTime)*1000, 4);
         $nosecounterData->generatedAt = $this->now;
 
+	    $nosecounterData->statusCount = array();
+	    foreach ($this->data[$this->year]['Status'] as $status => $count) {
+		    $nosecounterData->statusCount[$status] = $count;
+	    }
+
         if($templateFile == null) {
             return $nosecounterData;
         } else {
