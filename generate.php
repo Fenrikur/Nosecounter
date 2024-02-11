@@ -2,12 +2,16 @@
 /**
  * Example for using the Nosecounter class to generate a HTML output file.
  *
- * (c) 2016 by Fenrikur <nosecounter@fenrikur.de>
+ * (c) 2024 by Fenrikur <nosecounter(at)fenrikur.de>
  */
 
-require_once 'Nosecounter.php';
+ namespace Eurofurence\Nosecounter;
 
-$nosecounter = new \nosecounter\Nosecounter();
+ require __DIR__ . '/vendor/autoload.php';
+ require "Nosecounter.php";
+ 
+ use DateTime;
+ use DateTimeZone;
 
 echo $nosecounter->setApiUrl('%insert_your_api_endpoint_url_here%')
     ->setApiToken('%insert_your_api_token_here%')

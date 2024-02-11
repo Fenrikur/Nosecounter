@@ -1,6 +1,11 @@
 .idea
+.vscode
 archive
 # Will be created during generation and contains only generated files
 svg
 view.html
 *.local.php
+.vendor
+*.tar.gz
+index_files
+vendor

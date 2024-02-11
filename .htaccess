@@ -1,6 +1,2 @@
-# Prevent access to git related files
-RedirectMatch 404 /\.git
-# Prevent generation from external hosts
-RedirectMatch 404 generate
-# Prevent access to archive files (people should really use the official API for getting that data)
-RedirectMatch 404 archive
+# Prevent access to all but .html and .svg files
+RedirectMatch 404 ".*(?<!\/|\.html|\.svg)$"

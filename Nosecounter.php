@@ -1,21 +1,44 @@
 <?php
+
 /**
  * Compiles registration statistics retrieved via a JSON API and generates locally stored SVG files for caching.
  *
  * Uses SVGGraph by goat1000, which is available under the LGPL at https://github.com/goat1000/SVGGraph
  *
- * (c) 2016 by Dominik "Fenrikur" Schöner <nosecounter@fenrikur.de>
+ * (c) 2024 by Fenrikur <nosecounter(at)fenrikur.de>
  */
 
-namespace nosecounter;
+namespace Eurofurence\Nosecounter;
 
-//TODO: Add CSS-based tooltips
-require_once 'SVGGraph/SVGGraph.php';
+use Goat1000\SVGGraph\SVGGraph;
+
+class NosecounterGraphType
+{
+    const AGE = 0;
+    const AGE_COMPARISON = 1;
+    const COUNTRY = 2;
+    const COUNTRY_COMPARISON = 3;
+    const DEMOGRAPHICS = 4;
+    const GENDER = 5;
+    const GENDER_COMPARISON = 6;
+    const REGISTRATIONS = 7;
+    const SHIRTS = 8;
+    const SPONSORS = 9;
+    const SPONSORS_COMPARISON = 10;
+    const STATUS = 11;
+    const MAX_VALUE = 11;
+
+    static function isValid($graphType)
+    {
+        return is_integer($graphType) && $graphType <= self::MAX_VALUE;
+    }
+}
 
 //TODO: Add theme-based backgrounds and styling (maybe additional classes required on some elements -> setting: svg_class?)
 //TODO: Increase readability of overlapping elements in scatterplot
 
-class Nosecounter {
+class Nosecounter
+{
     const NOT_AVAILABLE = 'n/a';
 
     /** @var string $apiUrl URL pointing to the API endpoint delivering the current stats */
@@ -77,6 +100,12 @@ class Nosecounter {
     /** @var string $statusBarSuffix String that will be appended to the status bar. */
     private $statusBarSuffix = ' |';
 
+    /** @var int[] $graphTypes Array of graph types that should be generated; see NosecounterGraphType for available types. */
+    private $graphTypes = [];
+
+    private $colours = null;
+    private $registrationsColours = array(array('red:0.5', 'yellow:0.5'));
+
     private $topCountryList;
 
     private $svgGraphDefaultSettings = array(
@@ -120,7 +149,7 @@ class Nosecounter {
 
     /**
      * Converts percentage values from decimal (0.0 … 1.0) to textual representation.
-     * Note: To be used with \SVGGraph's axis_text_callback_y.
+     * Note: To be used with SVGGraph's axis_text_callback_y.
      * @param float $value Decimal representation of percentage
      * @param int $precision Precision of percentage
      * @return string Textual representation with unit sign (0% … 100%)
@@ -131,16 +160,17 @@ class Nosecounter {
     private $sponsorLabel;
     private $shirtSizeLabel;
 
-    function __construct() {
+    function __construct()
+    {
         date_default_timezone_set('UTC');
-        $this->axisPercentage = function($value, $precision = 0) {
-            return round($value * 100, $precision) . "%";
+        $this->axisPercentage = function (int|float $value) {
+            return sprintf("%.1f%%", $value);
         };
 
-        $this->labelClosure = function($dataset, $key, $value) {
+        $this->labelClosure = function ($dataset, $key, $value) {
 
             //TODO: Nasty hack to get the year number back
-            $year = substr($key, count($key) - 6, 4);
+            $year = substr($key, 6, 4);
 
             $field = (isset($this->fieldList[$dataset])) ? $this->fieldList[$dataset] : Nosecounter::NOT_AVAILABLE;
 
@@ -149,24 +179,32 @@ class Nosecounter {
             return round($value * 100, 1) . "% ({$absoluteValue})";
         };
 
-        $this->genderLabel = \Closure::bind($this->labelClosure,
+        $this->genderLabel = \Closure::bind(
+            $this->labelClosure,
             (object) [
                 'fieldName' => 'Gender',
                 'fieldList' => $this->genderList,
                 'data' => &$this->data
-            ]);
-        $this->sponsorLabel = \Closure::bind($this->labelClosure,
+            ]
+        );
+        $this->sponsorLabel = \Closure::bind(
+            $this->labelClosure,
             (object) [
                 'fieldName' => 'Sponsor',
                 'fieldList' => $this->sponsorList,
                 'data' => &$this->data
-            ]);
-        $this->shirtSizeLabel = \Closure::bind($this->labelClosure,
+            ]
+        );
+        $this->shirtSizeLabel = \Closure::bind(
+            $this->labelClosure,
             (object) [
                 'fieldName' => 'ShirtSize',
                 'fieldList' => $this->shirtSizeList,
                 'data' => &$this->data
-            ]);
+            ]
+        );
+
+        $this->graphTypes = range(0, NosecounterGraphType::MAX_VALUE);
     }
 
     /**
@@ -182,11 +220,14 @@ class Nosecounter {
      * returned, identical to the one supplied for any given $templateFile.
      * Returns FALSE if an error occurred during generation.
      */
-    public function generate($templateFile = null, $outputFile = null) {
+    public function generate($templateFile = null, $outputFile = null)
+    {
         $startTime = microtime(TRUE);
 
-        if(empty($this->registrationsStart) || empty($this->registrationsEnd) ||
-            empty($this->apiUrl) || empty($this->apiToken) || empty($this->year)) {
+        if (
+            empty($this->registrationsStart) || empty($this->registrationsEnd) ||
+            empty($this->apiUrl) || empty($this->apiToken) || empty($this->year)
+        ) {
             error_log('Not all obligatory parameters (apiUrl, apiToken, year, registrationsStart and registrationsEnd) have been set!');
             return FALSE;
         }
@@ -194,54 +235,55 @@ class Nosecounter {
         $this->now = new \DateTimeImmutable("now", new \DateTimeZone('UTC'));
         $this->loadData();
 
-        if(empty($this->data) || empty($this->data[$this->year])) {
+        if (empty($this->data) || empty($this->data[$this->year])) {
             error_log('No data available!');
             return FALSE;
         }
 
-        if(!is_dir('./svg')) {
+        if (!is_dir('./svg')) {
             mkdir('./svg');
         }
         $nosecounterData = new \stdClass();
 
         $nosecounterData->year = $this->year;
         $nosecounterData->registrationsInterval = round($this->registrationsInterval / 60) . ' Minutes';
-        $nosecounterData->age = $this->generateAge();
-        $nosecounterData->ageComparison = $this->generateAgeComparison();
-        $nosecounterData->country = $this->generateCountry();
-        $nosecounterData->countryComparison = $this->generateCountryComparison();
-        $nosecounterData->demographics = $this->generateDemographics();
-        $nosecounterData->gender = $this->generateGender();
-        $nosecounterData->genderComparison = $this->generateGenderComparison();
-        $nosecounterData->registrations = $this->generateRegistrations();
-        $nosecounterData->shirts = $this->generateShirts();
-        $nosecounterData->sponsors = $this->generateSponsors();
-        $nosecounterData->sponsorsComparison = $this->generateSponsorsComparison();
-        $nosecounterData->status = $this->generateStatus();
+        $nosecounterData->age = array_search(NosecounterGraphType::AGE, $this->graphTypes) !== false ? $this->generateAge() : false;
+        $nosecounterData->ageComparison = array_search(NosecounterGraphType::AGE_COMPARISON, $this->graphTypes) !== false ? $this->generateAgeComparison() : false;
+        $nosecounterData->country = array_search(NosecounterGraphType::COUNTRY, $this->graphTypes) !== false ? $this->generateCountry() : false;
+        $nosecounterData->countryComparison = array_search(NosecounterGraphType::COUNTRY_COMPARISON, $this->graphTypes) !== false ? $this->generateCountryComparison() : false;
+        $nosecounterData->demographics = array_search(NosecounterGraphType::DEMOGRAPHICS, $this->graphTypes) !== false ? $this->generateDemographics() : false;
+        $nosecounterData->gender = array_search(NosecounterGraphType::GENDER, $this->graphTypes) !== false ? $this->generateGender() : false;
+        $nosecounterData->genderComparison = array_search(NosecounterGraphType::GENDER_COMPARISON, $this->graphTypes) !== false ? $this->generateGenderComparison() : false;
+        $nosecounterData->registrations = array_search(NosecounterGraphType::REGISTRATIONS, $this->graphTypes) !== false ? $this->generateRegistrations() : false;
+        $nosecounterData->shirts = array_search(NosecounterGraphType::SHIRTS, $this->graphTypes) !== false ? $this->generateShirts() : false;
+        $nosecounterData->sponsors = array_search(NosecounterGraphType::SPONSORS, $this->graphTypes) !== false ? $this->generateSponsors() : false;
+        $nosecounterData->sponsorsComparison = array_search(NosecounterGraphType::SPONSORS_COMPARISON, $this->graphTypes) !== false ? $this->generateSponsorsComparison() : false;
+        $nosecounterData->status = array_search(NosecounterGraphType::STATUS, $this->graphTypes) !== false ? $this->generateStatus() : false;
         $nosecounterData->statusbar = $this->generateStatusBar();
-        $nosecounterData->generatedIn = round((microtime(TRUE) - $startTime)*1000, 4);
+        $nosecounterData->generatedIn = round((microtime(TRUE) - $startTime) * 1000, 4);
         $nosecounterData->generatedAt = $this->now;
+        $nosecounterData->graphHeight = $this->graphHeight;
 
-	    $nosecounterData->statusCount = array();
-	    foreach ($this->data[$this->year]['Status'] as $status => $count) {
-		    $nosecounterData->statusCount[$status] = $count;
-	    }
+        $nosecounterData->statusCount = array();
+        foreach ($this->data[$this->year]['Status'] as $status => $count) {
+            $nosecounterData->statusCount[$status] = $count;
+        }
 
-        if($templateFile == null) {
+        if ($templateFile == null) {
             return $nosecounterData;
         } else {
             $output = null;
-            if(!(include $templateFile) || empty($output)) {
+            if (!(include $templateFile) || empty($output)) {
                 error_log('Template file not found or invalid!');
                 return FALSE;
             }
 
-            if($outputFile != null) {
+            if ($outputFile != null) {
                 if (!file_exists($outputFile) || is_writable($outputFile)) {
                     $fh = fopen($outputFile, 'w');
                     $isWriteSuccessful  = fwrite($fh, $output);
                     fclose($fh);
-                    if(!$isWriteSuccessful) {
+                    if (!$isWriteSuccessful) {
                         error_log('Failed to write output to file!');
                         return FALSE;
                     } else {
@@ -256,10 +298,11 @@ class Nosecounter {
         }
     }
 
-    private function loadData() {
+    private function loadData()
+    {
         foreach (scandir($this->archiveDir) as $file) {
             $filePath = $this->archiveDir . DIRECTORY_SEPARATOR . $file;
-            if($file == '.' || $file == '..') {
+            if ($file == '.' || $file == '..') {
                 continue;
             }
             if (is_file($filePath) && ($fileJson = file_get_contents($filePath)) !== FALSE) {
@@ -271,24 +314,31 @@ class Nosecounter {
         }
 
         $this->doRegistrations = ($this->now >= $this->registrationsStart && $this->now <= $this->registrationsEnd) || !file_exists($this->svgDir . 'registrations.svg');
-        if (($apiJson = file_get_contents("$this->apiUrl?token=$this->apiToken&year=$this->year".(($this->doRegistrations)?'&show-created=1':''))) !== FALSE) {
+        if (($apiJson = file_get_contents("$this->apiUrl?token=$this->apiToken&year=$this->year" . (($this->doRegistrations) ? '&show-created=1' : ''))) !== FALSE) {
+            file_put_contents("{$this->archiveDir}nosecounter.{$this->year}.json", $apiJson);
             $this->data[$this->year] = json_decode($apiJson, TRUE);
-        } else {
-            error_log('Failed to read data from API!');
+        } elseif ($this->data[$this->year]) {
+            error_log('Info: Failed to read data from API, falling back to local disk.');
+        }
+        else {
+            error_log('Error: Failed to read current data from API and local disk!');
         }
         $this->doRegistrations = isset($this->data[$this->year]['Created']);
 
         ksort($this->data);
         $this->data = array_slice($this->data, max(0, count($this->data) - $this->maxYearCount), $this->maxYearCount, TRUE);
 
-        foreach($this->data as $year => $yearData) {
-            $this->data[$year]['Age'] = array_filter($this->data[$year]['Age'], function($var) { return $var >= $this->minAge && $var <= $this->maxAge; }, ARRAY_FILTER_USE_KEY);
+        foreach ($this->data as $year => $yearData) {
+            $this->data[$year]['Age'] = array_filter($this->data[$year]['Age'], function ($var) {
+                return $var >= $this->minAge && $var <= $this->maxAge;
+            }, ARRAY_FILTER_USE_KEY);
             asort($this->data[$year]['Country']);
-            $this->data[$year]['Country'] = array_reverse($this->data[$year]['Country']);
+            $this->data[$year]['Country'] = array_change_key_case(array_reverse($this->data[$year]['Country']));
         }
     }
 
-    private function generateAge() {
+    private function generateAge()
+    {
         $settings = array(
             'grid_division_h' => 1,
             'axis_text_angle_h' => -90,
@@ -298,13 +348,17 @@ class Nosecounter {
             'axis_min_v' => 0.9,
         );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
-        $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
+        $settings['axis_text_callback_y'] = function ($v) {
+            return $v < 1 ? 0 : $v;
+        };
 
         return $this->generateBarGraph('Age', $settings, 'age');
     }
 
-    private function generateAgeComparison() {
-        $settings = array_merge($this->svgGraphDefaultSettings,
+    private function generateAgeComparison()
+    {
+        $settings = array_merge(
+            $this->svgGraphDefaultSettings,
             array(
                 'grid_division_h' => 1,
                 'axis_text_angle_h' => -90,
@@ -321,7 +375,9 @@ class Nosecounter {
             )
         );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
-        $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
+        $settings['axis_text_callback_y'] = function ($v) {
+            return $v < 1 ? 0 : $v;
+        };
 
         $values = array();
 
@@ -334,13 +390,17 @@ class Nosecounter {
             }
         }
 
-        $graph = new \SVGGraph($this->graphWidth, $this->graphHeight, $settings);
+        $graph = new SVGGraph($this->graphWidth, $this->graphHeight, $settings);
 
+        if ($this->colours) {
+            $graph->colours($this->colours);
+        }
         $graph->Values($values);
         return $this->writeSvg('ageComparison', $graph->Fetch('MultiScatterGraph'));
     }
 
-    private function generateCountry() {
+    private function generateCountry()
+    {
         $settings = array(
             'grid_division_h' => 1,
             'log_axis_y' => TRUE,
@@ -349,14 +409,18 @@ class Nosecounter {
             'show_data_labels' => TRUE,
         );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
-        $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
+        $settings['axis_text_callback_y'] = function ($v) {
+            return $v < 1 ? 0 : $v;
+        };
 
         return $this->generateBarGraph('Country', $settings, 'country');
     }
 
-    private function generateCountryComparison() {
+    private function generateCountryComparison()
+    {
         $settings = array(
             'legend_columns' => 2,
+            'legend_shadow_opacity' => 0,
             'pad_right' => 120,
             'log_axis_y' => TRUE,
             'log_axis_y_base' => 2,
@@ -364,23 +428,28 @@ class Nosecounter {
             'show_data_labels' => TRUE,
         );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
-        $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
+        $settings['axis_text_callback_y'] = function ($v) {
+            return $v < 1 ? 0 : $v;
+        };
 
         $this->topCountryList = array_keys(array_slice($this->data[$this->year]['Country'], 0, $this->topCountryCount));
 
         return $this->generateGroupedComparison('Country', $settings, 'countryComparison', $this->topCountryList);
     }
 
-    private function generateDemographics() {
+    private function generateDemographics()
+    {
         $settings = array(
             'pad_right' => 120,
             'show_data_labels' => TRUE,
+            'legend_shadow_opacity' => 0,
         );
 
         return $this->generateGroupedComparison('SpecialInterest', $settings, 'demographics', $this->specialInterestList);
     }
 
-    private function generateGender() {
+    private function generateGender()
+    {
         $settings = array(
             'show_label_percent' => TRUE,
         );
@@ -388,7 +457,8 @@ class Nosecounter {
         return $this->generatePieGraph('Gender', $settings, 'gender');
     }
 
-    private function generateGenderComparison() {
+    private function generateGenderComparison()
+    {
         $settings = array(
             'data_label_callback' => $this->genderLabel,
             'pad_right' => 100,
@@ -397,15 +467,17 @@ class Nosecounter {
         return $this->generateStackedComparison('Gender', $settings, 'genderComparison', $this->genderList);
     }
 
-    private function generateRegistrations() {
-        if(!$this->doRegistrations) {
+    private function generateRegistrations()
+    {
+        if (!$this->doRegistrations) {
             $filePath = "{$this->svgDir}registrations.svg";
-            if(file_exists($filePath)) {
+            if (file_exists($filePath)) {
                 return $filePath;
             }
             return false;
         }
-        $settings = array_merge($this->svgGraphDefaultSettings,
+        $settings = array_merge(
+            $this->svgGraphDefaultSettings,
             array(
                 'fill_under' => TRUE,
                 'datetime_keys' => TRUE,
@@ -426,17 +498,17 @@ class Nosecounter {
         foreach ($values_raw as $date => $value) {
             $dateTime = new \DateTimeImmutable($date, new \DateTimeZone('UTC'));
 
-            if($dateTime >= $this->registrationsStart && $dateTime <= $this->registrationsEnd) {
-                if(!isset($aggregateStart)) {
+            if ($dateTime >= $this->registrationsStart && $dateTime <= $this->registrationsEnd) {
+                if (!isset($aggregateStart)) {
                     $aggregateStart = $this->alignToInterval($dateTime, $this->registrationsInterval);
                 }
 
-                if($dateTime->sub($aggregateInterval) >= $aggregateStart) {
+                if ($dateTime->sub($aggregateInterval) >= $aggregateStart) {
 
                     // Cap intervals with zero values if there is a gap between them
-                    if(!array_key_exists($aggregateStart->format($this->registrationsTimestampFormat), $values)) {
+                    if (!array_key_exists($aggregateStart->format($this->registrationsTimestampFormat), $values)) {
                         // Check if the gap spans more than a single interval and cap previous interval if necessary
-                        if(isset($lastInterval) && $aggregateStart >= $lastInterval) {
+                        if (isset($lastInterval) && $aggregateStart >= $lastInterval) {
                             $values[$lastInterval->add($aggregateInterval)->format($this->registrationsTimestampFormat)] = 0;
                         }
 
@@ -458,15 +530,15 @@ class Nosecounter {
             }
         }
 
-        if(isset($lastDate)) {
-            if(!isset($aggregateStart)) {
+        if (isset($lastDate)) {
+            if (!isset($aggregateStart)) {
                 $aggregateStart = $this->alignToInterval($lastDate, $this->registrationsInterval);
             }
 
             // Cap intervals with zero values if there is a gap between them
-            if(!array_key_exists($aggregateStart->format($this->registrationsTimestampFormat), $values)) {
+            if (!array_key_exists($aggregateStart->format($this->registrationsTimestampFormat), $values)) {
                 // Check if the gap spans more than a single interval and cap previous interval if necessary
-                if(isset($lastInterval) && $aggregateStart >= $lastInterval) {
+                if (isset($lastInterval) && $aggregateStart >= $lastInterval) {
                     $values[$lastInterval->add($aggregateInterval)->format($this->registrationsTimestampFormat)] = 0;
                 }
 
@@ -475,18 +547,19 @@ class Nosecounter {
             }
 
             $values[$lastDate->format($this->registrationsTimestampFormat)] = $aggregatedCount;
-
         }
 
-        $graph = new \SVGGraph($this->graphWidth, $this->graphHeight, $settings);
-        $graph->colours = array(array('red:0.5', 'yellow:0.5'));
+        $graph = new SVGGraph($this->graphWidth, $this->graphHeight, $settings);
+        $graph->colours($this->registrationsColours);
         $graph->Values($values);
         return $this->writeSvg('registrations', $graph->Fetch('LineGraph'));
     }
 
-    private function generateShirts() {
+    private function generateShirts()
+    {
         $settings = array(
             'legend_columns' => 2,
+            'legend_shadow_opacity' => 0,
             'data_label_callback' => $this->shirtSizeLabel,
             'pad_right' => 130,
         );
@@ -494,7 +567,8 @@ class Nosecounter {
         return $this->generateStackedComparison('ShirtSize', $settings, 'shirts', $this->shirtSizeList);
     }
 
-    private function generateSponsors() {
+    private function generateSponsors()
+    {
         $settings = array(
             'show_label_percent' => TRUE,
         );
@@ -502,7 +576,8 @@ class Nosecounter {
         return $this->generatePieGraph('Sponsor', $settings, 'sponsors');
     }
 
-    private function generateSponsorsComparison() {
+    private function generateSponsorsComparison()
+    {
         $settings = array(
             'data_label_callback' => $this->sponsorLabel,
             'pad_right' => 140,
@@ -511,7 +586,8 @@ class Nosecounter {
         return $this->generateStackedComparison('Sponsor', $settings, 'sponsorsComparison', $this->sponsorList);
     }
 
-    private function generateStatus() {
+    private function generateStatus()
+    {
         $settings = array(
             'log_axis_y' => TRUE,
             'log_axis_y_base' => 2,
@@ -519,31 +595,44 @@ class Nosecounter {
             'show_data_labels' => TRUE,
         );
         // Allows bar values of 0 to manifest on log scale in combination with axis_min_v = 0.9
-        $settings['axis_text_callback_y'] = function($v) { return $v < 1 ? 0 : $v; };
+        $settings['axis_text_callback_y'] = function ($v) {
+            return $v < 1 ? 0 : $v;
+        };
+        // Status names on x axis should always start with an uppercase letter
+        $settings['axis_text_callback_x'] = function ($i, $key) {
+            return ucfirst($key ?? '');
+        };
 
         return $this->generateBarGraph('Status', $settings, 'status');
     }
 
-    private function generateStatusBar() {
+    private function generateStatusBar()
+    {
         $statusBarItems = array();
         foreach ($this->data[$this->year]['Status'] as $status => $count) {
-            $statusBarItems[] = "$status: $count";
+            $statusBarItems[] = ucfirst($status) . ": " . $count;
         }
 
         return $this->statusBarPrefix . implode($this->statusBarSeparator, $statusBarItems) . $this->statusBarSuffix;
     }
 
-    private function generateBarGraph($fieldName, $settings, $fileName) {
+    private function generateBarGraph($fieldName, $settings, $fileName)
+    {
         $settings = array_merge($this->svgGraphDefaultSettings, $settings);
         $values = $this->data[$this->year][$fieldName];
 
-        $graph = new \SVGGraph($this->graphWidth, $this->graphHeight, $settings);
+        $graph = new SVGGraph($this->graphWidth, $this->graphHeight, $settings);
+
+        if ($this->colours) {
+            $graph->colours($this->colours);
+        }
 
         $graph->Values($values);
         return $this->writeSvg($fileName, $graph->Fetch('BarGraph'));
     }
 
-    private function generateGroupedComparison($fieldName, $settings, $fileName, $legendEntries) {
+    private function generateGroupedComparison($fieldName, $settings, $fileName, $legendEntries)
+    {
         $settings = array_merge($this->svgGraphDefaultSettings, $settings);
         $settings['legend_entries'] = $legendEntries;
         $values = array();
@@ -554,12 +643,18 @@ class Nosecounter {
             }
         }
 
-        $graph = new \SVGGraph($this->graphWidth, $this->graphHeight, $settings);
+        $graph = new SVGGraph($this->graphWidth, $this->graphHeight, $settings);
+
+        if ($this->colours) {
+            $graph->colours($this->colours);
+        }
+
         $graph->Values($values);
         return $this->writeSvg($fileName, $graph->Fetch('GroupedBarGraph'));
     }
 
-    private function generatePieGraph($fieldName, $settings, $fileName) {
+    private function generatePieGraph($fieldName, $settings, $fileName)
+    {
         //TODO: Label callback to show percentage as well as absolute count
         $settings = array_merge(
             $this->svgGraphDefaultSettings,
@@ -580,13 +675,18 @@ class Nosecounter {
             $values[Nosecounter::NOT_AVAILABLE] = $delta;
         }
 
-        $graph = new \SVGGraph($this->graphWidth, $this->graphHeight, $settings);
+        $graph = new SVGGraph($this->graphWidth, $this->graphHeight, $settings);
+
+        if ($this->colours) {
+            $graph->colours($this->colours);
+        }
 
         $graph->Values($values);
         return $this->writeSvg($fileName, $graph->Fetch('ExplodedPieGraph'));
     }
 
-    private function generateStackedComparison($fieldName, $settings, $fileName, $legendEntries) {
+    private function generateStackedComparison($fieldName, $settings, $fileName, $legendEntries)
+    {
         $settings = array_merge(
             $this->svgGraphDefaultSettings,
             array(
@@ -621,7 +721,11 @@ class Nosecounter {
             $settings['legend_entries'] = array_merge($legendEntries, array(Nosecounter::NOT_AVAILABLE));
         }
 
-        $graph = new \SVGGraph($this->graphWidth, $this->graphHeight, $settings);
+        $graph = new SVGGraph($this->graphWidth, $this->graphHeight, $settings);
+
+        if ($this->colours) {
+            $graph->colours($this->colours);
+        }
 
         $graph->Values($values);
         return $this->writeSvg($fileName, $graph->Fetch('StackedBarGraph'));
@@ -633,15 +737,16 @@ class Nosecounter {
      * @param string $svg SVG code to be written to file.
      * @return bool|string
      */
-    private function writeSvg($fileName, $svg) {
+    private function writeSvg($fileName, $svg)
+    {
         $filePath = "{$this->svgDir}{$fileName}.svg";
-        if(is_writable($this->svgDir) && (!file_exists($filePath) || is_writable($filePath))) {
+        if (is_writable($this->svgDir) && (!file_exists($filePath) || is_writable($filePath))) {
             $file = fopen($filePath, 'w');
-            if(!fwrite($file, $svg)) {
+            if (!fwrite($file, $svg)) {
                 error_log("Failed to write SVG to $filePath!");
             }
             fclose($file);
-            return "{$filePath}?t={$this->now->getTimestamp()}";
+            return "{$fileName}.svg?t={$this->now->getTimestamp()}";
         } else {
             error_log("No write permissions for $filePath!");
         }
@@ -656,7 +761,8 @@ class Nosecounter {
      * @param int $interval Interval in seconds to which $dateTime should be aligned to
      * @return \DateTimeImmutable|bool Newly created DateTimeImmutable aligned to given $interval or FALSE on failure.
      */
-    private function alignToInterval(\DateTimeImmutable $dateTime, $interval) {
+    private function alignToInterval(\DateTimeImmutable $dateTime, $interval)
+    {
         return $dateTime->sub(new \DateInterval('PT' . $dateTime->getTimestamp() % $interval . 'S'));
     }
 
@@ -664,7 +770,8 @@ class Nosecounter {
      * @see Nosecounter::$apiUrl
      * @return string
      */
-    public function getApiUrl() {
+    public function getApiUrl()
+    {
         return $this->apiUrl;
     }
 
@@ -673,8 +780,9 @@ class Nosecounter {
      * @param string $apiUrl
      * @return Nosecounter
      */
-    public function setApiUrl($apiUrl) {
-        if(empty($apiUrl)) {
+    public function setApiUrl($apiUrl)
+    {
+        if (empty($apiUrl)) {
             throw new \InvalidArgumentException('API URL may not be empty!');
         }
 
@@ -686,7 +794,8 @@ class Nosecounter {
      * @see Nosecounter::$apiToken
      * @return string
      */
-    public function getApiToken() {
+    public function getApiToken()
+    {
         return $this->apiToken;
     }
 
@@ -695,7 +804,8 @@ class Nosecounter {
      * @param string $apiToken
      * @return Nosecounter
      */
-    public function setApiToken($apiToken) {
+    public function setApiToken($apiToken)
+    {
         $this->apiToken = $apiToken;
         return $this;
     }
@@ -704,7 +814,8 @@ class Nosecounter {
      * @see Nosecounter::$year
      * @return int
      */
-    public function getYear() {
+    public function getYear()
+    {
         return $this->year;
     }
 
@@ -713,8 +824,9 @@ class Nosecounter {
      * @param int $year
      * @return Nosecounter
      */
-    public function setYear($year) {
-        if($year <= 0) {
+    public function setYear($year)
+    {
+        if ($year <= 0) {
             throw new \InvalidArgumentException('Year must be > 0!');
         }
 
@@ -726,7 +838,8 @@ class Nosecounter {
      * @see Nosecounter::$archiveDir
      * @return string
      */
-    public function getArchiveDir() {
+    public function getArchiveDir()
+    {
         return $this->archiveDir;
     }
 
@@ -735,8 +848,9 @@ class Nosecounter {
      * @param string $archiveDir
      * @return Nosecounter
      */
-    public function setArchiveDir($archiveDir) {
-        if(!is_dir($archiveDir) || !is_readable($archiveDir)) {
+    public function setArchiveDir($archiveDir)
+    {
+        if (!is_dir($archiveDir) || !is_readable($archiveDir)) {
             error_log("The archive directory at $archiveDir does not exist or isn't readable!");
         }
 
@@ -746,10 +860,44 @@ class Nosecounter {
     }
 
     /**
+     * @see Nosecounter::$graphTypes
+     * @return int[]
+     */
+    public function getGraphTypes()
+    {
+        return $this->graphTypes;
+    }
+
+    /**
+     * @see Nosecounter::$graphTypes
+     * @param int[] $graphTypes
+     * @return Nosecounter
+     */
+    public function setGraphTypes($graphTypes)
+    {
+        if (!is_array($graphTypes)) {
+            $graphTypes = [$graphTypes];
+        }
+
+        $validGraphTypes = [];
+        foreach ($graphTypes as $graphType) {
+            if (NosecounterGraphType::isValid($graphType)) {
+                array_push($validGraphTypes, $graphType);
+            } else {
+                error_log("Ignoring invalid graph type '$graphType'.");
+            }
+        }
+
+        $this->graphTypes = $validGraphTypes;
+        return $this;
+    }
+
+    /**
      * @see Nosecounter::$maxYearCount
      * @return int
      */
-    public function getMaxYearCount() {
+    public function getMaxYearCount()
+    {
         return $this->maxYearCount;
     }
 
@@ -758,8 +906,9 @@ class Nosecounter {
      * @param int $maxYearCount
      * @return Nosecounter
      */
-    public function setMaxYearCount($maxYearCount) {
-        if($maxYearCount <= 0) {
+    public function setMaxYearCount($maxYearCount)
+    {
+        if ($maxYearCount <= 0) {
             throw new \InvalidArgumentException('maxYearCount must be > 0!');
         } else {
             $this->maxYearCount = $maxYearCount;
@@ -772,7 +921,8 @@ class Nosecounter {
      * @see Nosecounter::$registrationsTimestampFormat
      * @return string
      */
-    public function getRegistrationsTimestampFormat() {
+    public function getRegistrationsTimestampFormat()
+    {
         return $this->registrationsTimestampFormat;
     }
 
@@ -781,8 +931,9 @@ class Nosecounter {
      * @param string $registrationsTimestampFormat
      * @return Nosecounter
      */
-    public function setRegistrationsTimestampFormat($registrationsTimestampFormat) {
-        if(empty($registrationsTimestampFormat)) {
+    public function setRegistrationsTimestampFormat($registrationsTimestampFormat)
+    {
+        if (empty($registrationsTimestampFormat)) {
             //TODO: Validate timestamp format?
             throw new \InvalidArgumentException('registrationsTimestampFormat format may not be empty!');
         } else {
@@ -795,7 +946,8 @@ class Nosecounter {
      * @see Nosecounter::$registrationsStart
      * @return \DateTime
      */
-    public function getRegistrationsStart() {
+    public function getRegistrationsStart()
+    {
         return $this->registrationsStart;
     }
 
@@ -804,10 +956,11 @@ class Nosecounter {
      * @param \DateTime $registrationsStart
      * @return Nosecounter
      */
-    public function setRegistrationsStart($registrationsStart) {
-        if(empty($registrationsStart)) {
+    public function setRegistrationsStart($registrationsStart)
+    {
+        if (empty($registrationsStart)) {
             throw new \InvalidArgumentException('registrationsStart may not be empty!');
-        } elseif(!empty($this->registrationsStart) && $registrationsStart > $this->registrationsEnd) {
+        } elseif (!empty($this->registrationsStart) && $registrationsStart > $this->registrationsEnd) {
             throw new \InvalidArgumentException('registrationsStart may not be set to a value before registrationsEnd!');
         }
 
@@ -819,7 +972,8 @@ class Nosecounter {
      * @see Nosecounter::$registrationsStart
      * @return \DateTime
      */
-    public function getRegistrationsEnd() {
+    public function getRegistrationsEnd()
+    {
         return $this->registrationsEnd;
     }
 
@@ -828,10 +982,11 @@ class Nosecounter {
      * @param \DateTime $registrationsEnd
      * @return Nosecounter
      */
-    public function setRegistrationsEnd($registrationsEnd) {
-        if(empty($registrationsEnd)) {
+    public function setRegistrationsEnd($registrationsEnd)
+    {
+        if (empty($registrationsEnd)) {
             throw new \InvalidArgumentException('registrationsEnd may not be empty!');
-        } elseif(!empty($this->registrationsEnd) && $registrationsEnd < $this->registrationsStart) {
+        } elseif (!empty($this->registrationsEnd) && $registrationsEnd < $this->registrationsStart) {
             throw new \InvalidArgumentException('registrationsEnd may not be set to a value before registrationsStart!');
         }
 
@@ -843,7 +998,8 @@ class Nosecounter {
      * @see Nosecounter::$registrationsInterval
      * @return int
      */
-    public function getRegistrationsInterval() {
+    public function getRegistrationsInterval()
+    {
         return $this->registrationsInterval;
     }
 
@@ -852,8 +1008,9 @@ class Nosecounter {
      * @param int $registrationsInterval
      * @return Nosecounter
      */
-    public function setRegistrationsInterval($registrationsInterval) {
-        if($registrationsInterval <= 0) {
+    public function setRegistrationsInterval($registrationsInterval)
+    {
+        if ($registrationsInterval <= 0) {
             throw new \InvalidArgumentException('registrationsInterval must be > 0!');
         }
 
@@ -865,7 +1022,8 @@ class Nosecounter {
      * @see Nosecounter::$topCountryCount
      * @return int
      */
-    public function getTopCountryCount() {
+    public function getTopCountryCount()
+    {
         return $this->topCountryCount;
     }
 
@@ -874,8 +1032,9 @@ class Nosecounter {
      * @param int $topCountryCount
      * @return Nosecounter
      */
-    public function setTopCountryCount($topCountryCount) {
-        if($topCountryCount <= 0) {
+    public function setTopCountryCount($topCountryCount)
+    {
+        if ($topCountryCount <= 0) {
             throw new \InvalidArgumentException('topCountryCount must be > 0!');
         }
 
@@ -887,7 +1046,8 @@ class Nosecounter {
      * @see Nosecounter::$minAge
      * @return int
      */
-    public function getMinAge() {
+    public function getMinAge()
+    {
         return $this->minAge;
     }
 
@@ -896,10 +1056,11 @@ class Nosecounter {
      * @param int $minAge
      * @return Nosecounter
      */
-    public function setMinAge($minAge) {
-        if($minAge <= 0) {
+    public function setMinAge($minAge)
+    {
+        if ($minAge <= 0) {
             throw new \InvalidArgumentException('minAge must be > 0!');
-        } elseif($minAge > $this->maxAge) {
+        } elseif ($minAge > $this->maxAge) {
             throw new \InvalidArgumentException('minAge must be less than maxAge!');
         }
 
@@ -911,7 +1072,8 @@ class Nosecounter {
      * @see Nosecounter::$maxAge
      * @return int
      */
-    public function getMaxAge() {
+    public function getMaxAge()
+    {
         return $this->maxAge;
     }
 
@@ -920,10 +1082,11 @@ class Nosecounter {
      * @param int $maxAge
      * @return Nosecounter
      */
-    public function setMaxAge($maxAge) {
-        if($maxAge <= 0) {
+    public function setMaxAge($maxAge)
+    {
+        if ($maxAge <= 0) {
             throw new \InvalidArgumentException('maxAge must be > 0!');
-        } elseif($maxAge < $this->minAge) {
+        } elseif ($maxAge < $this->minAge) {
             throw new \InvalidArgumentException('maxAge must be greater than minAge!');
         }
 
@@ -935,7 +1098,8 @@ class Nosecounter {
      * @see Nosecounter::$genderList
      * @return array
      */
-    public function getGenderList() {
+    public function getGenderList()
+    {
         return $this->genderList;
     }
 
@@ -944,8 +1108,9 @@ class Nosecounter {
      * @param array $genderList
      * @return Nosecounter
      */
-    public function setGenderList($genderList) {
-        if(empty($genderList)) {
+    public function setGenderList($genderList)
+    {
+        if (empty($genderList)) {
             throw new \InvalidArgumentException('genderList may not be empty!');
         }
 
@@ -957,7 +1122,8 @@ class Nosecounter {
      * @see Nosecounter::$sponsorList
      * @return array
      */
-    public function getSponsorList() {
+    public function getSponsorList()
+    {
         return $this->sponsorList;
     }
 
@@ -966,8 +1132,9 @@ class Nosecounter {
      * @param array $sponsorList
      * @return Nosecounter
      */
-    public function setSponsorList($sponsorList) {
-        if(empty($sponsorList)) {
+    public function setSponsorList($sponsorList)
+    {
+        if (empty($sponsorList)) {
             throw new \InvalidArgumentException('sponsorList may not be empty!');
         }
 
@@ -979,7 +1146,8 @@ class Nosecounter {
      * @see Nosecounter::$specialInterestList
      * @return array
      */
-    public function getSpecialInterestList() {
+    public function getSpecialInterestList()
+    {
         return $this->specialInterestList;
     }
 
@@ -988,8 +1156,9 @@ class Nosecounter {
      * @param array $specialInterestList
      * @return Nosecounter
      */
-    public function setSpecialInterestList($specialInterestList) {
-        if(empty($specialInterestList)) {
+    public function setSpecialInterestList($specialInterestList)
+    {
+        if (empty($specialInterestList)) {
             throw new \InvalidArgumentException('specialInterestList may not be empty!');
         }
 
@@ -1001,7 +1170,8 @@ class Nosecounter {
      * @see Nosecounter::$shirtSizeList
      * @return array
      */
-    public function getShirtSizeList() {
+    public function getShirtSizeList()
+    {
         return $this->shirtSizeList;
     }
 
@@ -1010,8 +1180,9 @@ class Nosecounter {
      * @param array $shirtSizeList
      * @return Nosecounter
      */
-    public function setShirtSizeList($shirtSizeList) {
-        if(empty($shirtSizeList)) {
+    public function setShirtSizeList($shirtSizeList)
+    {
+        if (empty($shirtSizeList)) {
             throw new \InvalidArgumentException('shirtSizeList may not be empty!');
         }
 
@@ -1022,7 +1193,8 @@ class Nosecounter {
     /**
      * @return array
      */
-    public function getSvgGraphDefaultSettings() {
+    public function getSvgGraphDefaultSettings()
+    {
         return $this->svgGraphDefaultSettings;
     }
 
@@ -1032,7 +1204,8 @@ class Nosecounter {
      * @param array $svgGraphDefaultSettings
      * @return Nosecounter
      */
-    public function setSvgGraphDefaultSettings($svgGraphDefaultSettings) {
+    public function setSvgGraphDefaultSettings($svgGraphDefaultSettings)
+    {
         $this->svgGraphDefaultSettings = array_merge($this->svgGraphDefaultSettings, $svgGraphDefaultSettings);
         return $this;
     }
@@ -1040,7 +1213,8 @@ class Nosecounter {
     /**
      * @return string
      */
-    public function getSvgDir() {
+    public function getSvgDir()
+    {
         return $this->svgDir;
     }
 
@@ -1048,8 +1222,9 @@ class Nosecounter {
      * @param string $svgDir
      * @return Nosecounter
      */
-    public function setSvgDir($svgDir) {
-        if(empty($svgDir)) {
+    public function setSvgDir($svgDir)
+    {
+        if (empty($svgDir)) {
             throw new \InvalidArgumentException('svgDir may not be empty!');
         }
 
@@ -1061,7 +1236,8 @@ class Nosecounter {
     /**
      * @return int
      */
-    public function getGraphWidth() {
+    public function getGraphWidth()
+    {
         return $this->graphWidth;
     }
 
@@ -1069,8 +1245,9 @@ class Nosecounter {
      * @param int $graphWidth
      * @return Nosecounter
      */
-    public function setGraphWidth($graphWidth) {
-        if($graphWidth <= 0) {
+    public function setGraphWidth($graphWidth)
+    {
+        if ($graphWidth <= 0) {
             throw new \InvalidArgumentException('graphWidth must be > 0!');
         }
 
@@ -1081,7 +1258,8 @@ class Nosecounter {
     /**
      * @return int
      */
-    public function getGraphHeight() {
+    public function getGraphHeight()
+    {
         return $this->graphHeight;
     }
 
@@ -1089,8 +1267,9 @@ class Nosecounter {
      * @param int $graphHeight
      * @return Nosecounter
      */
-    public function setGraphHeight($graphHeight) {
-        if($graphHeight <= 0) {
+    public function setGraphHeight($graphHeight)
+    {
+        if ($graphHeight <= 0) {
             throw new \InvalidArgumentException('graphHeight must be > 0!');
         }
 
@@ -1101,7 +1280,8 @@ class Nosecounter {
     /**
      * @return int
      */
-    public function getStatusBarSeparator() {
+    public function getStatusBarSeparator()
+    {
         return $this->statusBarSeparator;
     }
 
@@ -1109,7 +1289,8 @@ class Nosecounter {
      * @param int $statusBarSeparator
      * @return Nosecounter
      */
-    public function setStatusBarSeparator($statusBarSeparator) {
+    public function setStatusBarSeparator($statusBarSeparator)
+    {
         $this->statusBarSeparator = $statusBarSeparator;
         return $this;
     }
@@ -1117,7 +1298,8 @@ class Nosecounter {
     /**
      * @return int
      */
-    public function getStatusBarPrefix() {
+    public function getStatusBarPrefix()
+    {
         return $this->statusBarPrefix;
     }
 
@@ -1125,7 +1307,8 @@ class Nosecounter {
      * @param int $statusBarPrefix
      * @return Nosecounter
      */
-    public function setStatusBarPrefix($statusBarPrefix) {
+    public function setStatusBarPrefix($statusBarPrefix)
+    {
         $this->statusBarPrefix = $statusBarPrefix;
         return $this;
     }
@@ -1133,7 +1316,8 @@ class Nosecounter {
     /**
      * @return int
      */
-    public function getStatusBarSuffix() {
+    public function getStatusBarSuffix()
+    {
         return $this->statusBarSuffix;
     }
 
@@ -1141,8 +1325,31 @@ class Nosecounter {
      * @param int $statusBarSuffix
      * @return Nosecounter
      */
-    public function setStatusBarSuffix($statusBarSuffix) {
+    public function setStatusBarSuffix($statusBarSuffix)
+    {
         $this->statusBarSuffix = $statusBarSuffix;
+        return $this;
+    }
+
+    public function getColours()
+    {
+        return $this->colours;
+    }
+
+    public function setColours($colours)
+    {
+        $this->colours = $colours;
+        return $this;
+    }
+
+    public function getRegistrationsColours()
+    {
+        return $this->registrationsColours;
+    }
+
+    public function setRegistrationsColours($colours)
+    {
+        $this->registrationsColours = $colours;
         return $this;
     }
 }

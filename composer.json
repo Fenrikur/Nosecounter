@@ -1,0 +1,11 @@
+{
+    "name": "eurofurence/nosecounter",
+    "type": "project",
+    "description": "Eurofurence Nosecounter",
+    "keywords": ["eurofurence", "visualisation"],
+    "license": "MIT",
+    "require": {
+        "php": "^8.1",
+        "goat1000/svggraph": "^3"
+    },
+}

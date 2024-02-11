@@ -2,7 +2,7 @@
 /**
  * Simple HTML template for displaying the generated SVG.
  *
- * Copyright 2016 by Dominik "Fenrikur" Schöner <nosecounter@fenrikur.de>
+ * Copyright 2024 by Fenrikur <nosecounter(at)fenrikur.de>
  */
 
 $output = <<< EOF
